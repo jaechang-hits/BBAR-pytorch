@@ -5,11 +5,10 @@ from typing import Tuple, Dict
 from models import GraphEncodingModel, Graph2Vec, TerminationCheckModel, FragmentSelectionModel, IndexSelectionModel
 from utils.feature import NUM_ATOM_FEATURES, NUM_ATOM_FEATURES_BRICS
 
-use_lib = 1000 #69364
+use_lib = 2000 #69364
 
 class FCP(nn.Module) :
     def __init__ (self,
-                  library,
                   cond_scale,
                   hidden_size11=64,     # embedding size of node feature
                   hidden_size12=64,     # output size of GConv
@@ -28,7 +27,6 @@ class FCP(nn.Module) :
 
         self.cond_scale = cond_scale
         self.cond_size = len(self.cond_scale)
-        self.lib_size = len(library)
 
         self.gv_lib = None
         self.gv_lib_batch = None
@@ -110,6 +108,8 @@ class FCP(nn.Module) :
         _h1 = self.gem2_1(_h1, adj1, _cond)                         # N, V, Fhid
         h11 = torch.cat([h1, _h1], dim=-1)                          # N, V, Fin + Fhid
         Y = self.ism(h11)                                           # N, V
+        node_mask = torch.logical_not(adj1.sum(2).bool())
+        Y.masked_fill_(node_mask[:, :Y.size(1)], float('-inf'))
         if mask is not None :
             Y.masked_fill_(mask[:, :h11.size(1)], float('-inf'))
         if probs :

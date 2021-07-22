@@ -14,7 +14,7 @@ RDLogger.DisableLog('rdApp.*')
 __all__ = ['FCPDataset']
 
 class FCPDataset(Dataset) :
-    def __init__(self, data_file: str, cond_module, library: brics.BRICSLibrary, max_atoms: int) :
+    def __init__(self, data_file: str, cond_module) :
         super(FCPDataset, self).__init__()
         self.cond_module = cond_module
         self.max_atoms = max_atoms
@@ -23,7 +23,6 @@ class FCPDataset(Dataset) :
         self.fid = data.FID.to_numpy()
         self.index = data.Index.to_numpy()
         self.molID = data.MolID.to_numpy()
-        self.library = library
         del(data)
         gc.collect()
 

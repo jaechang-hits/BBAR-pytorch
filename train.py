@@ -31,8 +31,8 @@ balanced = False
 library_file = 'data/library.csv'
 library_npz_file = 'data/library.npz'
 db_file = 'data/malt_logp_qed.db'
-save_dir = 'save_logp'
 model_save = True
+save_dir = 'save_logp_sum'
 target = ['MolLogP']
 loss_fn = 'sum'
 
@@ -44,8 +44,7 @@ else :
 if not os.path.isdir(save_dir) :
     os.mkdir(save_dir)
 
-library = brics.BRICSLibrary(library_file, True)
-
+#library = brics.BRICSLibrary(library_file, True)
 if len(target) > 0 :
     cond_module = Cond_Module(db_file, target)
     cond_scale = cond_module.scale
@@ -53,7 +52,7 @@ else :
     cond_module = None
     cond_scale = {}
 
-train_ds = FCPDataset(train_file, cond_module, library, max_atoms) 
+train_ds = FCPDataset(train_file, cond_module, max_atoms) 
 
 if balanced :
     class_sample_count = np.array([len(np.where(train_ds.frag1==t)[0]) for t in train_ds.frag1])
@@ -68,7 +67,7 @@ else :
 
 n_train = len(train_ds)
 
-model = FCP(library, cond_scale)
+model = FCP(cond_scale)
 common.init_model(model)
 trainer = NS_Trainer(library_npz_file, n_sample, 3/4, model, device)
 print(f"number of parameters : {sum(p.numel() for p in model.parameters() if p.requires_grad)}")

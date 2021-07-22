@@ -11,18 +11,10 @@ class BRICSLibrary() :
         self._mol = None
         self.freq = None
 
-        library = pd.read_csv(library_file, index_col = False, names=['SMILES', 'freq'])
+        library = pd.read_csv(library_file)
         self.smiles = library.SMILES
-        self.freq = library.freq
+        self.freq = library.frequency
         
-        self.allow = np.zeros([17, len(self.smiles)], dtype='?')
-        for fid2, frag2 in enumerate(self.smiles) :
-            allow_set = set()
-            brics_set = {t[1: -2] for t in p.findall(frag2)}
-            for brics_type in brics_set :
-                allow_set.update(BRICS_TYPE_INT[brics_type])
-                self.allow[list(allow_set), fid2] = True
-
         if save_mol :
             self._mol = [Chem.MolFromSmiles(s) for s in self.smiles]
     

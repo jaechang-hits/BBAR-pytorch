@@ -71,13 +71,15 @@ BRICS_SMARTS_MOL = {
 }
 
 BRICS_substructure = {k:Chem.MolFromSmarts(v[0]) for k, v in BRICS_SMARTS_MOL.items()}
+
 def compose(
     frag1: Union[str, Mol],
     frag2: Union[str, Mol],
     idx1: int,
     idx2: int,
     returnMols: bool = False,
-    returnBricsType: bool = False
+    returnBricsType: bool = False,
+    warning: bool = False,
     ) -> Union[str, Mol, Tuple, None] :
     
     if isinstance(frag1, str) :
@@ -85,11 +87,12 @@ def compose(
     if isinstance(frag2, str) :
         frag2 = Chem.MolFromSmiles(frag2)
 
+    #print(f'compose {Chem.MolToSmiles(frag1)} + {Chem.MolToSmiles(frag2)}')
     # Validity Check
     atom1 = frag1.GetAtomWithIdx(idx1)
     atom2 = frag2.GetAtomWithIdx(idx2)
     if (atom2.GetAtomicNum() != 0):
-        print(f"ERROR: frag2's {idx2}th atom '{atom2.GetSymbol()}' should be [*].")
+        if warning: print(f"ERROR: frag2's {idx2}th atom '{atom2.GetSymbol()}' should be [*].")
         return None
     bricsidx2 = str(atom2.GetIsotope())
 
@@ -101,8 +104,15 @@ def compose(
                 validity = True
                 break
     if not validity :
-        print(f"ERROR: frag1's {idx1}th atom '{atom1.GetSymbol()}' couldn't be connected with frag2.")
+        if warning: print(f"ERROR: frag1's {idx1}th atom '{atom1.GetSymbol()}' couldn't be connected with frag2.")
         return None
+
+    # check explicit Hydrogen
+    explicitH = -1
+    if atom1.GetNumExplicitHs() > 0 :
+        for a in atom1.GetNeighbors() :
+            if a.GetAtomicNum() == 1 :
+                explicitH = a.GetIdx()
     
     # Combine Molecules
     num_atoms1 = frag1.GetNumAtoms()
@@ -115,6 +125,8 @@ def compose(
                      num_atoms1 + neigh_atom_idx2,
                      order = bt)
     edit_mol.RemoveAtom(num_atoms1 + idx2)
+    if explicitH >= 0 :
+        edit_mol.RemoveAtom(explicitH)
     
     combined_mol = edit_mol.GetMol()
     retval = Chem.MolToSmiles(combined_mol)
