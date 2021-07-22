@@ -46,7 +46,7 @@ for i, start_frag in enumerate(start_frag_list) :
     total_step += n_step
 
 validity = [len((sample_dict[start_frag])) / n_sample for start_frag in start_frag_list]
-uniqueness = [len(set(sample_dict[start_frag])) / n_sample for start_frag in start_frag_list]
+uniqueness = [len(set(sample_dict[start_frag])) / len(sample_dict[start_frag]) for start_frag in start_frag_list if len(sample_dict[start_frag]) > 0]
 avg_validity = np.mean(np.array(validity))*100
 avg_uniqueness = np.mean(np.array(uniqueness))*100
 avg_step = total_step / (n_sample * len(start_frag_list))

@@ -1,19 +1,8 @@
-import random
-import numpy as np
+import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import Mol
-from rdkit.Chem import rdChemReactions as Reactions
-from typing import Union, List, Tuple, Optional, Dict
+from typing import Union, Tuple
 import re
-import pandas as pd
-import gc
-p = re.compile('\[\d+\*\]')
-
-"""
-composing style
-Molecule + Fragment(With Star) -> Molecule
-We do not use linker for fragment
-"""
 
 BRICS_TYPE = {
     '1': ['3', '5', '10'],
@@ -72,7 +61,56 @@ BRICS_SMARTS_MOL = {
 
 BRICS_substructure = {k:Chem.MolFromSmarts(v[0]) for k, v in BRICS_SMARTS_MOL.items()}
 
-def compose(
+
+def compose1(
+    frag1: Union[str, Mol],
+    frag2: Union[str, Mol],
+    idx1: int,
+    idx2: int,
+    returnMols: bool = False,
+    returnBricsType: bool = False
+    ) -> Union[str, Mol, Tuple, None] :
+    
+    if isinstance(frag1, str) :
+        frag1 = Chem.MolFromSmiles(frag1)
+    if isinstance(frag2, str) :
+        frag2 = Chem.MolFromSmiles(frag2)
+    # Validity Check
+    atom1 = frag1.GetAtomWithIdx(idx1)
+    atom2 = frag2.GetAtomWithIdx(idx2)
+    if (atom1.GetAtomicNum() != 0) or (atom2.GetAtomicNum() != 0) :
+        print(f"ERROR: frag1's {idx1}th atom '{atom1.GetSymbol()}' and frag2's {idx2}th atom '{atom2.GetSymbol()}' should be [*].")
+        return None
+    bricsidx1 = str(atom1.GetIsotope())
+    bricsidx2 = str(atom2.GetIsotope())
+    if (bricsidx2 not in BRICS_TYPE[bricsidx1]) :
+        print(f"ERROR: connection between '{bricsidx1}'(frag1) and '{bricsidx2}'(frag2) is not allowed.")
+        return None
+    
+    # Combine Molecules
+    num_atoms1 = frag1.GetNumAtoms()
+    neigh_atom_idx1 = atom1.GetNeighbors()[0].GetIdx()
+    neigh_atom_idx2 = atom2.GetNeighbors()[0].GetIdx()
+    bt = (Chem.rdchem.BondType.SINGLE if bricsidx1 != '7' else Chem.rdchem.BondType.DOUBLE)
+    
+    starting_mol = Chem.CombineMols(frag1, frag2)
+    edit_mol = Chem.EditableMol(starting_mol)
+    edit_mol.AddBond(neigh_atom_idx1,
+                     num_atoms1 + neigh_atom_idx2,
+                     order = bt)
+    edit_mol.RemoveAtom(idx1)
+    edit_mol.RemoveAtom(num_atoms1 + idx2 - 1)    #idx1'th atom is removed
+    
+    combined_mol = edit_mol.GetMol()
+    retval = Chem.MolToSmiles(combined_mol)
+    if returnMols :
+        retval = Chem.MolFromSmiles(combined_smiles)
+    if returnBricsType :
+        return retval, (bricsidx1, bricsidx2)
+    else :
+        return retval
+
+def compose2(
     frag1: Union[str, Mol],
     frag2: Union[str, Mol],
     idx1: int,
@@ -87,6 +125,7 @@ def compose(
     if isinstance(frag2, str) :
         frag2 = Chem.MolFromSmiles(frag2)
 
+    #print(f'compose {Chem.MolToSmiles(frag1)} + {Chem.MolToSmiles(frag2)}')
     # Validity Check
     atom1 = frag1.GetAtomWithIdx(idx1)
     atom2 = frag2.GetAtomWithIdx(idx2)
@@ -108,7 +147,7 @@ def compose(
 
     atom1.SetNoImplicit(False)
     atom1.SetNumExplicitHs(0)
-    
+
     # Combine Molecules
     num_atoms1 = frag1.GetNumAtoms()
     neigh_atom_idx2 = atom2.GetNeighbors()[0].GetIdx()
@@ -122,8 +161,8 @@ def compose(
     edit_mol.RemoveAtom(num_atoms1 + idx2)
     edit_mol.ReplaceAtom(idx1, atom1)
     combined_mol = edit_mol.GetMol()
-    retval = Chem.MolToSmiles(combined_mol)
 
+    retval = Chem.MolToSmiles(combined_mol)
     if returnMols :
         retval = Chem.MolFromSmiles(combined_smiles)
     if returnBricsType :
@@ -131,97 +170,48 @@ def compose(
     else :
         return retval
 
-buildTemplate= []
-buildReaction = []
-for typ1, typ2list in BRICS_TYPE.items() :
-    for typ2 in typ2list :
-        r1 = BRICS_SMARTS_MOL[typ1][0]
-        r2, bond = BRICS_SMARTS_FRAG[typ2]
-        react = '[$(%s):1].[$(%s):2]%s;!@[%s*]' % (r1, r2, bond, typ2)
-        prod = '[*:1]%s;!@[*:2]' % (bond)
-        tmpl = '%s>>%s' % (react, prod)
-        buildTemplate.append(tmpl)
-buildReaction = [Reactions.ReactionFromSmarts(template) for template in buildTemplate]
+def remove_brics(smi) :
+    new_smi = re.sub('\[\d+\*\]', '[H]', smi)
+    new_mol = Chem.MolFromSmiles(new_smi)
+    new_smi = Chem.MolToSmiles(new_mol)
+    new_mol = Chem.MolFromSmiles(new_smi)
+    return Chem.MolToSmiles(new_mol)
 
-def all_possible_compose(frag1: Union[str, Mol],
-                         frag2: Union[str, Mol]) -> Union[str, None] :
-    
-    if isinstance(frag1, str) :
-        frag1 = Chem.MolFromSmiles(frag1)
-    if isinstance(frag2, str) :
-        frag2 = Chem.MolFromSmiles(frag2)
-    
-    possible_list = []
-    for rxn in buildReaction :
-        products = rxn.RunReactants((frag1, frag2))
-        for p in products :
-            possible_list.append(Chem.MolToSmiles(p[0]))
-        
-    return possible_list
+now_data = pd.read_csv('data/train_uniq_.csv')
+with open('data/library.csv') as f :
+    lines = f.readlines()[1:]
+    now_lib = [Chem.MolFromSmiles(l.split(',')[1]) for l in lines]
+prev_data = pd.read_csv('data/train_jaechang1.csv')
+with open('data/old_library.csv') as f :
+    lines = f.readlines()
+    prev_lib = [Chem.MolFromSmiles(l.split(',')[0]) for l in lines]
 
-def get_broken(frag: Union[str, Mol]) -> List[Tuple[int, str]] :
-    if isinstance(frag, str) :
-        frag = Chem.MolFromSmiles(frag)
-    broken_idx_list = []
-    for atom in frag.GetAtoms() :
-        if atom.GetAtomicNum() == 0 :
-            broken_idx_list.append((atom.GetIdx(), str(atom.GetIsotope())))
-    return broken_idx_list
+comp_smi1_ = []
+comp_smi1 = []
+comp_smi2 = []
 
-def get_possible_indexs(frag1: Union[str, Mol],
-                        frag2: Union[str, Mol, None] = None,
-                        bidx2: Optional[str] = None) -> List[Tuple[Tuple[int, str]]] :
-    """
-    Get Indexs which can be connected to target brics type for target fragment
-    Return List[Tuple(AtomIndex:int, BRICSIndex:str)]
-    Example
-    >>> s1 = 'Nc1c(C)cccc1C'
-    >>> get_possible_indexs(s1, bidx2 = '12')
-    [(0, '5')]
-    >>> s2 = 'C(=O)CCNC=O'
-    >>> s2_ = '[10*]N1C(=O)COC1=O'
-    >>> get_possible_indexs(s2, frag2 = s2_)
-    [(0, '1'), (5, '1'), (2, '8'), (3, '8')]
-    """
-    assert (frag2 is not None) ^ (bidx2 is not None)
-    if isinstance(frag1, str) :
-        frag1 = Chem.MolFromSmiles(frag1)
-    if isinstance(frag2, str) :
-        frag2 = Chem.MolFromSmiles(frag2)
+t = 0
+for tup in prev_data.itertuples() :
+    if t == 1000 : break
+    t += 1
+    smi = compose1(tup.SMILES, prev_lib[tup.FID], tup.Index1, tup.Index2)
+    comp_smi1_.append(smi)
+    comp_smi1.append(remove_brics(smi))
 
-    if frag2 is None :
-        bidx2_list = [bidx2]
-    else :
-        bidx2_list = [bidx for aidx, bidx in get_broken(frag2)]
-    
-    idxs = []
-    for bidx2 in bidx2_list :
-        for bidx1 in BRICS_TYPE[bidx2] :
-            substructure = BRICS_substructure[bidx1]
-            for idxs_list in frag1.GetSubstructMatches(substructure) :
-                aidx1 = idxs_list[0]
-                idxs.append((aidx1, bidx1))
-    return idxs
+t = 0
+for tup in now_data.itertuples() :
+    if t == 1000 : break
+    t += 1
+    try :
+        comp_smi2.append(compose2(tup.SMILES, now_lib[tup.FID], tup.Idx, 0))
+    except:
+        print(tup)
+        exit(1)
 
-def get_possible_connections(frag1: Union[str, Mol],
-                             frag2: Union[str, Mol]) -> List[Tuple[Tuple[int, int], Tuple[str, str]]] :
-    """
-    Get all possible connections between frag1(w/o *) and frag2(w/ *)
-    Return List[Tuple(Tuple(AtomIndex1:int, AtomIndex2:int), Tuple(BRICSIndex1:str, BRICSIndex2:str))]
-    Example
-    >>> s1 = 'Nc1c(C)cccc1C'
-    >>> s2 = '[12*]S(=O)(=O)c1cc2c3c(c1)C(C)C(=O)N3CCC2'
-    >>> get_possible_connections(s1, s2)
-    [((0, 0), ('5', '12'))]
-    """
-    if isinstance(frag1, str) :
-        frag1 = Chem.MolFromSmiles(frag1)
-    if isinstance(frag2, str) :
-        frag2 = Chem.MolFromSmiles(frag2)
-    idx_set2 = get_broken(frag2)
-    connections = []
-    for aidx2, bidx2 in idx_set2 :
-        for aidx1, bidx1 in get_possible_indexs(frag1, bidx2 = bidx2) :
-            connections.append(((aidx1, aidx2), (bidx1, bidx2)))
-    return connections
-
+for i, (smi_, smi1, smi2) in enumerate(zip(comp_smi1_, comp_smi1, comp_smi2)) :
+    if (smi1 != smi2) :
+        print('---------------')
+        #print(prev_data.iloc[i])
+        print(smi_)
+        print(smi1)
+        print(smi2)

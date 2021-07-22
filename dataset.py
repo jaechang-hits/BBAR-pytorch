@@ -14,14 +14,14 @@ RDLogger.DisableLog('rdApp.*')
 __all__ = ['FCPDataset']
 
 class FCPDataset(Dataset) :
-    def __init__(self, data_file: str, cond_module) :
+    def __init__(self, data_file: str, cond_module, max_atoms: int) :
         super(FCPDataset, self).__init__()
         self.cond_module = cond_module
         self.max_atoms = max_atoms
         data = pd.read_csv(data_file)
         self.frag1 = data.SMILES.to_numpy()
         self.fid = data.FID.to_numpy()
-        self.index = data.Index.to_numpy()
+        self.index = data.Idx.to_numpy()
         self.molID = data.MolID.to_numpy()
         del(data)
         gc.collect()
