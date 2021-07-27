@@ -6,12 +6,13 @@ from typing import Tuple, Union
 import gc
 
 from utils.brics import BRICSLibrary
+import metric
 
 bceloss = nn.BCELoss()
 celoss = nn.CrossEntropyLoss()
 
 class NS_Trainer(nn.Module) :
-    def __init__(self, library_npz_file: str, n_sample: int, alpha: float, model, device) :
+    def __init__(self, model, library_npz_file: str, n_sample: int, alpha: float, label_smoothing: float, device) :
         super(NS_Trainer, self).__init__()
         self.model = model
         self.n_sample = n_sample
@@ -23,11 +24,13 @@ class NS_Trainer(nn.Module) :
         self.lib_node_size = self.library_h.size(1)
         self.library_h.requires_grad_(False)
         self.library_adj.requires_grad_(False)
+        self.label_true = 1 - label_smoothing + label_smoothing / self.lib_size
+        self.label_false = label_smoothing / self.lib_size
         library_npz.close()
         gc.collect()
         self.model.to(device)
 
-    def forward(self, h: FloatTensor, adj: BoolTensor, cond: FloatTensor, y_fid: LongTensor, y_idx: LongTensor) :
+    def forward(self, h: FloatTensor, adj: BoolTensor, cond: FloatTensor, y_fid: LongTensor, y_idx: LongTensor, train=True) :
         """
         h       N, Fin
         adj     N, N
@@ -51,19 +54,24 @@ class NS_Trainer(nn.Module) :
             return term_loss, 0.0, 0.0, 0.0
 
         y_fid[y_fid<0] = 0
-        hp, adjp = self.get_sample(y_fid)
-        _, gvp = self.model.g2v2(hp, adjp)
+        if train :
+            hp, adjp = self.get_sample(y_fid)
+            gvp = self.model.g2v2(hp, adjp)
+        else :
+            gvp = self.model.gv_lib[y_fid]
         prob_p = self.model.calculate_prob(gv1, gvp)                # (N)
-        fid_ploss = (prob_p+1e-12).log().mean()
-        #fid_ploss = (prob_p+1e-12).log().masked_fill_(y_term, 0).mean()
+        fid_ploss = metric.fragment_predict_loss(prob_p, self.label_true)
 
         fid_nloss = 0
         for _ in range(self.n_sample) :
-            hn, adjn = self.get_neg_sample(y_fid, None)                # (N)
-            _, gvn = self.model.g2v2(hn, adjn)
+            y_neg = self.get_neg_sample(y_fid)
+            if train :
+                hn, adjn = self.get_sample(y_neg)                # (N)
+                gvn = self.model.g2v2(hn, adjn)
+            else :
+                gvn = self.model.gv_lib[y_neg]
             prob_n = self.model.calculate_prob(gv1, gvn)      # (N)
-            #fid_nloss += (1 - prob_n + 1e-12).log().masked_fill_(y_term, 0).mean()
-            fid_nloss += (1 - prob_n + 1e-12).log().mean()
+            fid_nloss += metric.fragment_predict_loss(prob_n, self.label_false)
 
         logit_idx = self.model.predict_idx(h, adj, _h, gv1, gvp, cond, probs=False)
         idx_loss = celoss(logit_idx, y_idx)
@@ -75,14 +83,12 @@ class NS_Trainer(nn.Module) :
     Correct fragments(y) and fragments couldn't be connected to target(y_mask) are masked.
     """
     @torch.no_grad()
-    def get_neg_sample(self, y: LongTensor, y_mask: BoolTensor) -> LongTensor:
+    def get_neg_sample(self, y: LongTensor) -> LongTensor:
         batch_size = y.size(0)
         freq = self.library_freq.repeat(batch_size, 1)
         freq.scatter_(1, y.unsqueeze(1), 0)
-        #if y_mask is not None :
-        #    freq.masked_fill_(y_mask, 0)
         neg_idxs = torch.multinomial(freq, 1, True).view(-1)
-        return self.get_sample(neg_idxs)
+        return neg_idxs
 
     @torch.no_grad()
     def get_sample(self, sample: LongTensor) -> Tuple[FloatTensor, BoolTensor] :
@@ -95,7 +101,7 @@ class NS_Trainer(nn.Module) :
 
     @torch.no_grad()
     def model_save_gv_lib(self) :
-        _, gv_out_lib = self.model.g2v2(self.library_h, self.library_adj)
+        gv_out_lib = self.model.g2v2(self.library_h, self.library_adj)
         self.model.save_gv_lib(gv_out_lib)
 
     def model_remove_gv_lib(self) :

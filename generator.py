@@ -4,7 +4,8 @@ from torch.distributions.categorical import Categorical
 from torch.distributions.bernoulli import Bernoulli
 from torch.utils.data import Dataset, DataLoader
 from rdkit import Chem, RDLogger
-from typing import Dict, Union, Any, Optional, Callable
+from rdkit.Chem import Mol
+from typing import Dict, Union, Any, List, Optional, Callable
 import gc
 
 from utils import brics, common, feature
@@ -20,6 +21,7 @@ class MoleculeBuilder() :
         target: Dict[str, float],
         batch_size: int = 32,
         num_workers: int = 0,
+        idx_masking: bool = False,
         filter_fn : Optional[Callable] = None,
         device : Union[str, torch.device] = 'cuda:0'
         ) :
@@ -29,6 +31,7 @@ class MoleculeBuilder() :
         self.library = brics.BRICSLibrary(library, save_mol = True)
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.idx_masking = idx_masking
 
         if filter_fn :
             self.filter_fn = filter_fn
@@ -96,30 +99,40 @@ class MoleculeBuilder() :
                     break
 
                 # Predict Fid2
-                prob_dist_fid2 = self.model.predict_fid(gv1, probs=True).squeeze(-1)     # (N, N_lib)
-                # check whether the prob dist is valid or not
-                valid = (torch.sum(prob_dist_fid2, dim=-1) > 0)
+                prob_dist_fid2 = self.model.predict_fid(gv1, probs=True, use_lib = 5000).squeeze(-1)     # (N, N_lib)
+                # Check whether the prob dist is valid or not
+                valid = torch.logical_not(torch.isnan(prob_dist_fid2.sum(-1)))
                 h1, adj1, gv1, _h1 = h1[valid], adj1[valid], gv1[valid], _h1[valid]
                 prob_dist_fid2 = prob_dist_fid2[valid]
                 idx1 = idx1[valid]
                 smiles1_batch = smiles1_batch[valid.cpu().numpy()]
-                frag1_batch = [Chem.MolFromSmiles(s) for s in smiles1_batch]
                 n = h1.size(0)
                 num_atoms1 = h1.size(1)
-                # sampling
+                # Sampling
                 m = Categorical(probs = prob_dist_fid2)
                 fid2 = m.sample()
-                frag2_batch = [self.library.get_mol(idx.item()) for idx in fid2]
                 gv2 = self.model.gv_lib[fid2]
                 
                 # Predict Index
                 prob_dist_idx = self.model.predict_idx(h1, adj1, _h1, gv1, gv2, self.cond[:n], probs=True)
+                # Masking
+                if self.idx_masking :
+                    prob_dist_idx.masked_fill_(self.get_idx_mask(smiles1_batch, fid2, num_atoms1), 0)
+                    valid = (torch.sum(prob_dist_idx, dim=-1) > 0).tolist()
+                    smiles1_batch, fid2 = smiles1_batch[valid], fid2[valid]
+                    prob_dist_idx = prob_dist_idx[valid]
+                # Sampling
                 m = Categorical(probs = prob_dist_idx)
                 idx_batch = m.sample()
 
                 # compose fragments
+                frag1_batch = [Chem.MolFromSmiles(s) for s in smiles1_batch]
+                frag2_batch = [self.library.get_mol(idx.item()) for idx in fid2]
                 for frag1, frag2, idx in zip(frag1_batch, frag2_batch, idx_batch) :
-                    compose_smiles = brics.BRICSCompose.compose(frag1, frag2, int(idx), 0)
+                    try :
+                        compose_smiles = brics.BRICSCompose.compose(frag1, frag2, int(idx), 0, force=False)
+                    except:
+                        continue
                     if compose_smiles is None :
                         continue
                     if not self.filter_fn(compose_smiles) :
@@ -145,6 +158,18 @@ class MoleculeBuilder() :
         idx2 = y % num_atoms2
 
         return idx1, idx2
+
+    def get_idx_mask(self, frag1_list: List[Union[str, Mol]], fid2_list: List[int], max_atoms:int):
+        #possible_brics_type = self.library.get_possible_brics_type(fid2)
+        idx_mask = torch.ones((len(frag1_list), max_atoms), dtype=torch.bool, device=self.device)
+        for i, (frag1, fid2) in enumerate(zip(frag1_list, fid2_list)) :
+            if isinstance(frag1, str) :
+                frag1 = Chem.MolFromSmiles(frag1)
+            frag2 = self.library.get_mol(fid2)
+            idxs = brics.BRICSCompose.get_possible_indexs(frag1, frag2)
+            for idx, _ in idxs :
+                idx_mask[i, idx] = False
+        return idx_mask
 
 class MPDataset(Dataset) :
     def __init__(self, dataset, library) :

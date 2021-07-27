@@ -5,8 +5,6 @@ from typing import Tuple, Dict
 from models import GraphEncodingModel, Graph2Vec, TerminationCheckModel, FragmentSelectionModel, IndexSelectionModel
 from utils.feature import NUM_ATOM_FEATURES, NUM_ATOM_FEATURES_BRICS
 
-use_lib = 2000 #69364
-
 class FCP(nn.Module) :
     def __init__ (self,
                   cond_scale,
@@ -57,7 +55,7 @@ class FCP(nn.Module) :
     def g2v2 (self, h2, adj2) :
         _h2 = self.gem1_2(h2, adj2)
         gv2 = self.readout2(_h2)
-        return _h2, gv2
+        return gv2
 
     def calculate_prob(self, gv1, gv2) :
         return self.fsm(gv1, gv2)
@@ -72,23 +70,28 @@ class FCP(nn.Module) :
         return self.tcm(gv1)
         
 
-    def predict_fid(self, gv1, y_mask = None, force = False, probs = False) :
+    def predict_fid(self, gv1, y_mask = None, force = False, use_lib = 2000, probs = False) :
         """
         gv1     N, Fout+F'
         y_mask  N, N_lib
         """
+        if use_lib is None :
+            use_lib = self.gv_lib.size(0)
+
         batch_size = gv1.size(0)
         if force or self.gv_lib_batch is None or self.gv_lib_batch.size(0) < batch_size :
             self.gv_lib_batch = self.gv_lib[:use_lib].unsqueeze(0).repeat(batch_size, 1, 1)
                                                                             # (N, N_lib, F)
         gv1 = gv1.unsqueeze(1).repeat(1, use_lib, 1)                        # (N, N_lib, F+F')
-        y = self.fsm(gv1, self.gv_lib_batch[:batch_size]).log()
+        y = self.fsm(gv1, self.gv_lib_batch[:batch_size])
 
         if y_mask is not None :
-            y.masked_fill_(y_mask[:, :use_lib], '-inf')                     # (N, N_lib)
+            y.masked_fill_(y_mask[:, :use_lib], 0.0)                        # (N, N_lib)
 
         if probs :
-            y = torch.softmax(y, dim=-1)
+            y = y / y.sum(-1, keepdim = True)
+        else :
+            return y.log()
 
         return y                                                            # (N, N_lib)
 

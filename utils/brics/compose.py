@@ -7,6 +7,9 @@ from typing import Union, List, Tuple, Optional, Dict
 import re
 import pandas as pd
 import gc
+
+from .constant import BRICS_TYPE, BRICS_SMARTS_MOL, BRICS_SMARTS_FRAG
+
 p = re.compile('\[\d+\*\]')
 
 """
@@ -14,61 +17,6 @@ composing style
 Molecule + Fragment(With Star) -> Molecule
 We do not use linker for fragment
 """
-
-BRICS_TYPE = {
-    '1': ['3', '5', '10'],
-    '3': ['1', '4', '13', '14', '15', '16'],
-    '4': ['3', '5', '11'],
-    '5': ['1', '4', '12', '13', '14', '15', '16'],
-    '6': ['13', '14', '15', '16'],
-    '7': ['7'],
-    '8': ['9', '10', '13', '14', '15', '16'],
-    '9': ['8', '13', '14', '15', '16'],
-    '10': ['1', '8', '13', '14', '15', '16'],
-    '11': ['4', '13', '14', '15', '16'],
-    '12': ['5'],
-    '13': ['3', '5', '6', '8', '9', '10', '11', '14', '15', '16'],
-    '14': ['3', '5', '6', '8', '9', '10', '11', '13', '14', '15', '16'],
-    '15': ['3', '5', '6', '8', '9', '10', '11', '13', '14', '16'],
-    '16': ['3', '5', '6', '8', '9', '10', '11', '13', '14', '15', '16'],
-}
-BRICS_TYPE_INT = {k: [int(_) for _ in v] for k, v in BRICS_TYPE.items()}
-
-BRICS_SMARTS_FRAG = {
-  '1': ('[C;D3]([#0,#6,#7,#8])(=O)', '-'),
-  '3': ('[O;D2]-;!@[#0,#6,#1]', '-'), 
-  '4': ('[C;!D1;!$(C=*)]-;!@[#6]', '-'), 
-  '5': ('[N;!D1;!$(N=*);!$(N-[!#6;!#16;!#0;!#1]);!$([N;R]@[C;R]=O)]', '-'),
-  '6': ('[C;D3;!R](=O)-;!@[#0,#6,#7,#8]', '-'), 
-  '7': ('[C;D2,D3]-[#6]', '='),
-  '8': ('[C;!R;!D1;!$(C!-*)]', '-'), 
-  '9': ('[n;+0;$(n(:[c,n,o,s]):[c,n,o,s])]', '-'),
-  '10': ('[N;R;$(N(@C(=O))@[C,N,O,S])]', '-'), 
-  '11': ('[S;D2](-;!@[#0,#6])', '-'), 
-  '12': ('[S;D4]([#6,#0])(=O)(=O)', '-'), 
-  '13': ('[C;$(C(-;@[C,N,O,S])-;@[N,O,S])]', '-'), 
-  '14': ('[c;$(c(:[c,n,o,s]):[n,o,s])]', '-'),
-  '15': ('[C;$(C(-;@C)-;@C)]', '-'), 
-  '16': ('[c;$(c(:c):c)]', '-'),
-}
-
-BRICS_SMARTS_MOL = {
-  '1': ('[C;D2]([#0,#6,#7,#8])(=O)', '-'),
-  '3': ('[O;D1]-;!@[#0,#6,#1]', '-'), 
-  '4': ('[C;!$(C=*)]-;!@[#6]', '-'), 
-  '5': ('[N;!$(N=*);!$(N-[!#6;!#16;!#0;!#1]);!$([N;R]@[C;R]=O)]', '-'),
-  '6': ('[C;D2;!R](=O)-;!@[#0,#6,#7,#8]', '-'), 
-  '7': ('[C;D1,D2]-[#6]', '='),
-  '8': ('[C;!R;!$(C!-*)]', '-'), 
-  '9': ('[n;+0;$(n(:[c,n,o,s]):[c,n,o,s])]', '-'),
-  '10': ('[N;R;$(N(@C(=O))@[C,N,O,S])]', '-'), 
-  '11': ('[S;D1](-;!@[#0,#6])', '-'), 
-  '12': ('[S;D3]([#6,#0])(=O)(=O)', '-'), 
-  '13': ('[C;$(C(-;@[C,N,O,S])-;@[N,O,S])]', '-'), 
-  '14': ('[c;$(c(:[c,n,o,s]):[n,o,s])]', '-'),
-  '15': ('[C;$(C(-;@C)-;@C)]', '-'), 
-  '16': ('[c;$(c(:c):c)]', '-'),
-}
 
 BRICS_substructure = {k:Chem.MolFromSmarts(v[0]) for k, v in BRICS_SMARTS_MOL.items()}
 
@@ -79,6 +27,7 @@ def compose(
     idx2: int,
     returnMols: bool = False,
     returnBricsType: bool = False,
+    force: bool = False,
     warning: bool = False,
     ) -> Union[str, Mol, Tuple, None] :
     
@@ -92,7 +41,7 @@ def compose(
     atom2 = frag2.GetAtomWithIdx(idx2)
     if (atom2.GetAtomicNum() != 0):
         if warning: print(f"ERROR: frag2's {idx2}th atom '{atom2.GetSymbol()}' should be [*].")
-        return None
+        if not force: return None
     bricsidx2 = str(atom2.GetIsotope())
 
     validity = False
@@ -104,7 +53,7 @@ def compose(
                 break
     if not validity :
         if warning: print(f"ERROR: frag1's {idx1}th atom '{atom1.GetSymbol()}' couldn't be connected with frag2.")
-        return None
+        if not force: return None
 
     atom1.SetNoImplicit(False)
     atom1.SetNumExplicitHs(0)
@@ -189,18 +138,15 @@ def get_possible_indexs(frag1: Union[str, Mol],
     if isinstance(frag2, str) :
         frag2 = Chem.MolFromSmiles(frag2)
 
-    if frag2 is None :
-        bidx2_list = [bidx2]
-    else :
-        bidx2_list = [bidx for aidx, bidx in get_broken(frag2)]
+    if frag2 is not None :
+        bidx2 = str(frag2.GetAtomWithIdx(0).GetIsotope())
     
     idxs = []
-    for bidx2 in bidx2_list :
-        for bidx1 in BRICS_TYPE[bidx2] :
-            substructure = BRICS_substructure[bidx1]
-            for idxs_list in frag1.GetSubstructMatches(substructure) :
-                aidx1 = idxs_list[0]
-                idxs.append((aidx1, bidx1))
+    for bidx1 in BRICS_TYPE[bidx2] :
+        substructure = BRICS_substructure[bidx1]
+        for idxs_list in frag1.GetSubstructMatches(substructure) :
+            aidx1 = idxs_list[0]
+            idxs.append((aidx1, bidx1))
     return idxs
 
 def get_possible_connections(frag1: Union[str, Mol],

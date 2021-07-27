@@ -28,15 +28,16 @@ def filter_fn (smiles: str) -> bool:
 model = sys.argv[1]
 library = 'data/library.csv'
 library_npz = 'data/library.npz'
-start_frag_file = 'start_list/start_list.smi'
+start_frag_file = 'start_list/start_.smi'
 target = {'MolLogP': float(sys.argv[2])}
 n_sample = int(sys.argv[3])
 output_file = sys.argv[4]
+idx_masking = True
 
 os.system('mkdir -p ' + '/'.join(output_file.split('/')[:-1]))
 
 st = time.time()
-mb = MoleculeBuilder(model, library, library_npz, target, batch_size = 512, num_workers=0, filter_fn = filter_fn, device='cuda:0')
+mb = MoleculeBuilder(model, library, library_npz, target, batch_size = 512, num_workers=0, idx_masking = idx_masking, filter_fn = filter_fn, device='cuda:0')
 start_frag_list = common.load_txt(start_frag_file)
 sample_dict = {}
 total_step = 0
@@ -51,11 +52,18 @@ avg_validity = np.mean(np.array(validity))*100
 avg_uniqueness = np.mean(np.array(uniqueness))*100
 avg_step = total_step / (n_sample * len(start_frag_list))
 end = time.time()
+"""
 print(f'validity: {avg_validity:.1f}\t'
       f'uniqueness: {avg_uniqueness:.1f}\t'
       f'num step: {avg_step:.2f}\t'
       f'time: {(end-st):.5f}\t'
       f'time: {(end-st)/(n_sample*len(start_frag_list)):.5f}')
+"""
+print(f'{avg_validity:.1f}\t'
+      f'{avg_uniqueness:.1f}\t'
+      f'{avg_step:.2f}\t'
+      f'{(end-st):.5f}\t'
+      f'{(end-st)/(n_sample*len(start_frag_list)):.5f}')
 
 with open(output_file, 'w') as w :
     for start_frag in start_frag_list :
