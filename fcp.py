@@ -23,8 +23,12 @@ class FCP(nn.Module) :
                   ) :
         super(FCP, self).__init__()
 
-        self.cond_scale = cond_scale
-        self.cond_size = len(self.cond_scale)
+        if cond_scale is not None :
+            self.cond_scale = cond_scale
+            self.cond_size = len(self.cond_scale)
+        else :
+            self.cond_scale = {}
+            self.cond_size = 0
 
         self.gv_lib = None
         self.gv_lib_batch = None
@@ -107,7 +111,10 @@ class FCP(nn.Module) :
         cond    (N, Fcond)
         mask    (N, V1)
         """
-        _cond = torch.cat([cond, gv1, gv2], dim=-1)                 # N, Fcond + Fgv1 + Fgv2
+        if cond is not None :
+            _cond = torch.cat([cond, gv1, gv2], dim=-1)                 # N, Fcond + Fgv1 + Fgv2
+        else :
+            _cond = torch.cat([gv1, gv2], dim=-1)
         _h1 = self.gem2_1(_h1, adj1, _cond)                         # N, V, Fhid
         h11 = torch.cat([h1, _h1], dim=-1)                          # N, V, Fin + Fhid
         Y = self.ism(h11)                                           # N, V

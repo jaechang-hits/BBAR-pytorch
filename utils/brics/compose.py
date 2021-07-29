@@ -1,7 +1,7 @@
 import random
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem import Mol
+from rdkit.Chem import Mol, Atom
 from rdkit.Chem import rdChemReactions as Reactions
 from typing import Union, List, Tuple, Optional, Dict
 import re
@@ -132,7 +132,7 @@ def get_possible_indexs(frag1: Union[str, Mol],
     >>> get_possible_indexs(s2, frag2 = s2_)
     [(0, '1'), (5, '1'), (2, '8'), (3, '8')]
     """
-    assert (frag2 is not None) ^ (bidx2 is not None)
+    assert (frag2 is None) or (bidx2 is None)
     if isinstance(frag1, str) :
         frag1 = Chem.MolFromSmiles(frag1)
     if isinstance(frag2, str) :
@@ -142,12 +142,60 @@ def get_possible_indexs(frag1: Union[str, Mol],
         bidx2 = str(frag2.GetAtomWithIdx(0).GetIsotope())
     
     idxs = []
-    for bidx1 in BRICS_TYPE[bidx2] :
+    if bidx2 is not None :
+        brics_list = BRICS_TYPE[bidx2]
+    else :
+        brics_list = list(BRICS_TYPE.keys())
+
+    for bidx1 in brics_list :
         substructure = BRICS_substructure[bidx1]
         for idxs_list in frag1.GetSubstructMatches(substructure) :
             aidx1 = idxs_list[0]
             idxs.append((aidx1, bidx1))
     return idxs
+
+def get_possible_brics(frag1: Union[str, Mol],
+                       idx: Optional[str] = None) -> List[Tuple[Tuple[int, str]]] :
+    """
+    """
+    if isinstance(frag1, str) :
+        frag1 = Chem.MolFromSmiles(frag1)
+    
+    idxs = []
+    if idx is not None :
+        brics_list = fast_brics_search(frag1.GetAtomWithIdx(idx))
+    else :
+        brics_list = list(BRICS_TYPE.keys())
+
+    for bidx1 in brics_list :
+        substructure = BRICS_substructure[bidx1]
+        for idxs_list in frag1.GetSubstructMatches(substructure) :
+            aidx1 = idxs_list[0]
+            if idx is None or aidx1 == idx:
+                idxs.append(bidx1)
+                break
+
+    return idxs
+
+def fast_brics_search(atom: Atom) :
+    atomicnum = atom.GetAtomicNum()
+    aromatic = atom.GetIsAromatic()
+    if atomicnum == 6 :
+        if aromatic :
+            return ['14', '16']
+        else :
+            return ['1', '4', '6', '7', '8', '13', '15']
+    elif atomicnum == 7 :
+        if aromatic :
+            return ['9']
+        else :
+            return ['5', '10']
+    elif atomicnum == 8 : 
+        return ['3']
+    elif atomicnum == 16 :
+        return ['11', '12']
+    else :
+        return []
 
 def get_possible_connections(frag1: Union[str, Mol],
                              frag2: Union[str, Mol]) -> List[Tuple[Tuple[int, int], Tuple[str, str]]] :

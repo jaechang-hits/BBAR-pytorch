@@ -12,7 +12,7 @@ bceloss = nn.BCELoss()
 celoss = nn.CrossEntropyLoss()
 
 class NS_Trainer(nn.Module) :
-    def __init__(self, model, library_npz_file: str, n_sample: int, alpha: float, label_smoothing: float, device) :
+    def __init__(self, model, library_npz_file: str, n_sample: int, alpha: float, device) :
         super(NS_Trainer, self).__init__()
         self.model = model
         self.n_sample = n_sample
@@ -24,8 +24,6 @@ class NS_Trainer(nn.Module) :
         self.lib_node_size = self.library_h.size(1)
         self.library_h.requires_grad_(False)
         self.library_adj.requires_grad_(False)
-        self.label_true = 1 - label_smoothing + label_smoothing / self.lib_size
-        self.label_false = label_smoothing / self.lib_size
         library_npz.close()
         gc.collect()
         self.model.to(device)
@@ -38,6 +36,8 @@ class NS_Trainer(nn.Module) :
         y_fid   N
         y_idx   N
         """
+        if cond.size(-1) == 0 :
+            cond = None
         _h, gv1 = self.model.g2v1(h, adj, cond)
 
         y_term = (y_fid == -1)
@@ -46,7 +46,10 @@ class NS_Trainer(nn.Module) :
         p_term = self.model.predict_termination(gv1)
         term_loss = bceloss(p_term, y_term.float())
 
-        h, adj, cond = h[y_not_term], adj[y_not_term], cond[y_not_term]
+        if cond is not None :
+            h, adj, cond = h[y_not_term], adj[y_not_term], cond[y_not_term]
+        else :
+            h, adj = h[y_not_term], adj[y_not_term]
         y_fid, y_idx = y_fid[y_not_term], y_idx[y_not_term]
         _h, gv1 = _h[y_not_term], gv1[y_not_term]
    
@@ -60,7 +63,7 @@ class NS_Trainer(nn.Module) :
         else :
             gvp = self.model.gv_lib[y_fid]
         prob_p = self.model.calculate_prob(gv1, gvp)                # (N)
-        fid_ploss = metric.fragment_predict_loss(prob_p, self.label_true)
+        fid_ploss = metric.fragment_predict_loss(prob_p, 1.0)
 
         fid_nloss = 0
         for _ in range(self.n_sample) :
@@ -71,7 +74,8 @@ class NS_Trainer(nn.Module) :
             else :
                 gvn = self.model.gv_lib[y_neg]
             prob_n = self.model.calculate_prob(gv1, gvn)      # (N)
-            fid_nloss += metric.fragment_predict_loss(prob_n, self.label_false)
+            fid_nloss += metric.fragment_predict_loss(prob_n, 0.0)
+        fid_nloss/=self.n_sample
 
         logit_idx = self.model.predict_idx(h, adj, _h, gv1, gvp, cond, probs=False)
         idx_loss = celoss(logit_idx, y_idx)

@@ -17,8 +17,9 @@ class MoleculeBuilder() :
         self,
         model: str,     # Model path
         library: str,   # Library path
-        library_npz: str,   #Library feature path
-        target: Dict[str, float],
+        library_npz: Optional[str] = None,   #Library feature path
+        cal_gv_lib: bool = False,   # calculate library graph vector
+        target: Dict[str, float] = {},
         batch_size: int = 32,
         num_workers: int = 0,
         idx_masking: bool = False,
@@ -28,7 +29,23 @@ class MoleculeBuilder() :
 
         self.model = torch.load(model, map_location = device)
         self.model.eval()
+
         self.library = brics.BRICSLibrary(library, save_mol = True)
+        self.lib_size = len(self.library)
+        if cal_gv_lib or getattr(self.model, 'gv_lib', None) is None :
+            if library_npz is not None:
+                f = np.load(library_npz)
+                h = torch.from_numpy(f['h']).float().to(device)
+                adj = torch.from_numpy(f['adj']).bool().to(device)
+                f.close()
+            else:
+                h, adj = self.get_library_feature()
+                h = h.float().to(device)
+                adj = adj.bool().to(device)
+            with torch.no_grad() :
+                gv_lib = self.model.g2v2(h, adj)
+                self.model.save_gv_lib(gv_lib)
+
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.idx_masking = idx_masking
@@ -39,19 +56,7 @@ class MoleculeBuilder() :
             self.filter_fn = lambda x : True
 
         self.device = device
-        self.lib_size = len(self.library)
         self.cond = self.model.get_cond (target).unsqueeze(0).repeat(batch_size, 1).to(device)
-
-        library_npz = np.load(library_npz)
-        self.library_h = torch.from_numpy(library_npz['h']).to(device)
-        self.library_adj = torch.from_numpy(library_npz['adj']).to(device)
-        #self.library_freq = torch.from_numpy(library_npz['freq']).unsqueeze(0).to(device)
-        self.lib_size = self.library_h.size(0)
-        self.lib_node_size = self.library_h.size(1)
-        self.library_h.requires_grad_(False)
-        self.library_adj.requires_grad_(False)
-        library_npz.close()
-        gc.collect()
 
     @torch.no_grad()
     def generate(
@@ -170,6 +175,17 @@ class MoleculeBuilder() :
             for idx, _ in idxs :
                 idx_mask[i, idx] = False
         return idx_mask
+
+    def get_library_feature(self) :
+        max_atoms = max([m.GetNumAtoms() for m in self.library.mol])
+        v, adj = [], []
+        for m in self.library.mol :
+            v.append(feature.get_atom_features(m, max_atoms, True))
+            adj.append(feature.get_adj(m, max_atoms))
+
+        v = torch.stack(v)
+        adj = torch.stack(adj)
+        return v, adj
 
 class MPDataset(Dataset) :
     def __init__(self, dataset, library) :

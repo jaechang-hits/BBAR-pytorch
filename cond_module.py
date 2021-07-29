@@ -16,7 +16,7 @@ Cond_Module.db: Dict[int, Tuple[Float]]
 
 class Cond_Module () :
     def __init__(self, db_file: str, target: List[str]) :
-        usecols = ['MolID'] + target
+        usecols = ['MolID'] + list(target)
         db = pd.read_csv(db_file, index_col = 0, usecols = usecols)
         self.scale = OrderedDict()
         for desc in target :

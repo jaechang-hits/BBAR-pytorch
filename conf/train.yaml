@@ -1,0 +1,37 @@
+name: debug
+data_dir: data
+
+#Train
+train:
+    gpus: 1
+    lr: 0.001
+    validation: True
+    max_epoch: 30
+
+ns_trainer:
+    library_feature_path: ${data_dir}/library.npz
+    n_sample: 10
+    alpha: 0.75
+
+#Condition
+condition:
+    db_file: ${data_dir}/malt.db
+    descriptors: []
+
+data:
+    train:
+        data_path: ${data_dir}/train.csv
+        batch_size: 128
+        num_workers: 8
+        max_atoms: 50
+        sampler:
+            _target_: utils.train_utils.BalancedSampler
+            weight_path: ${data_dir}/train_weight.npy
+            n_sample: 4000000
+    val:
+        data_path: ${data_dir}/val.csv
+        batch_size: 256
+        num_workers: 8
+        max_atoms: 50
+
+

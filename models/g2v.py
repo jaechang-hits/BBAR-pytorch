@@ -52,7 +52,7 @@ class Graph2Vec(nn.Module) :
         v:      N, V, F
         cond:   N, Fcond
         """
-        assert (cond is None) ^ (self.cond)
+        assert (cond is None or cond.size(-1) == 0) ^ (self.cond)
         v1 = self.linear1(v)
         v2 = torch.sigmoid(self.linear2(v))
         Z = (v1 * v2).sum(1)
