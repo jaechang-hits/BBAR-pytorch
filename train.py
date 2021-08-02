@@ -28,7 +28,7 @@ def main(cfg) :
     ns_cfg = cfg.ns_trainer
     cond_cfg = cfg.condition
     data_cfg = cfg.data
-    cfg, save_dir = exp_manager(cfg)
+    cfg, save_dir = exp_manager(cfg, cfg.exp_dir)
 
     if train_cfg.gpus == 1 :
         device ='cuda:0'

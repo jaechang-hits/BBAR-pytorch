@@ -22,7 +22,6 @@ class MoleculeBuilder() :
         target: Dict[str, float] = {},
         batch_size: int = 32,
         num_workers: int = 0,
-        idx_masking: bool = False,
         filter_fn : Optional[Callable] = None,
         device : Union[str, torch.device] = 'cuda:0'
         ) :
@@ -32,7 +31,7 @@ class MoleculeBuilder() :
 
         self.library = brics.BRICSLibrary(library, save_mol = True)
         self.lib_size = len(self.library)
-        if cal_gv_lib or getattr(self.model, 'gv_lib', None) is None :
+        if cal_gv_lib or len(getattr(self.model, 'gv_lib', [])) != self.lib_size :
             if library_npz is not None:
                 f = np.load(library_npz)
                 h = torch.from_numpy(f['h']).float().to(device)
@@ -48,7 +47,6 @@ class MoleculeBuilder() :
 
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.idx_masking = idx_masking
 
         if filter_fn :
             self.filter_fn = filter_fn
@@ -121,11 +119,10 @@ class MoleculeBuilder() :
                 # Predict Index
                 prob_dist_idx = self.model.predict_idx(h1, adj1, _h1, gv1, gv2, self.cond[:n], probs=True)
                 # Masking
-                if self.idx_masking :
-                    prob_dist_idx.masked_fill_(self.get_idx_mask(smiles1_batch, fid2, num_atoms1), 0)
-                    valid = (torch.sum(prob_dist_idx, dim=-1) > 0).tolist()
-                    smiles1_batch, fid2 = smiles1_batch[valid], fid2[valid]
-                    prob_dist_idx = prob_dist_idx[valid]
+                prob_dist_idx.masked_fill_(self.get_idx_mask(smiles1_batch, fid2, num_atoms1), 0)
+                valid = (torch.sum(prob_dist_idx, dim=-1) > 0).tolist()
+                smiles1_batch, fid2 = smiles1_batch[valid], fid2[valid]
+                prob_dist_idx = prob_dist_idx[valid]
                 # Sampling
                 m = Categorical(probs = prob_dist_idx)
                 idx_batch = m.sample()

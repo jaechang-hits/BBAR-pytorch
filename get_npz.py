@@ -4,7 +4,7 @@ from rdkit import Chem
 import torch
 import numpy as np
 
-lib = pd.read_csv('data/library.csv')
+lib = pd.read_csv('data1/library_unused.csv')
 a = lib.SMILES
 
 ma = 34
@@ -19,4 +19,4 @@ v = torch.stack(v).numpy()
 adj = torch.stack(adj).numpy().astype('?')
 freq = lib.frequency.to_numpy()
 
-np.savez('data/library.npz', h=v, adj=adj, freq=freq)
+np.savez('data1/library_unused.npz', h=v, adj=adj, freq=freq)

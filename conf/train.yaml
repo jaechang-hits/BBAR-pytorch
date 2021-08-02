@@ -1,5 +1,6 @@
 name: debug
 data_dir: data
+exp_dir: result
 
 #Train
 train:

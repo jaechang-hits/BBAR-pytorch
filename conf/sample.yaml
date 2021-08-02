@@ -1,0 +1,27 @@
+name: debug
+save_dir: sample/
+data_dir: data/
+model_path: <model>
+
+condition: {}
+n_sample: 100
+
+start_frag_path: start_list/start100.smi
+save_property: True
+
+generator:
+    model_path: ${model_path}
+    library_path: ${data_dir}/library.csv
+    library_feature_path: null
+    update_gv_lib: False
+    target: ${condition}
+    gpus: 1
+    batch_size: 512
+    num_workers: 0
+
+formatter:
+    ExactMolwt: '.2f'
+    MolLogP: '.4f'
+    TPSA: '.2f'
+    qed: '.3f'
+
