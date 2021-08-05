@@ -27,7 +27,6 @@ class GConvLayer(nn.Module) :
         super(GConvLayer, self).__init__()
         self.W = nn.Linear(node_size, hidden_size)
         self.gate = nn.Linear(node_size + hidden_size, 1)
-        self.leakyrelu = nn.LeakyReLU(0.2)
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x: FloatTensor, adj: BoolTensor):

@@ -73,7 +73,6 @@ class FCP(nn.Module) :
     def predict_termination(self, gv1) :
         return self.tcm(gv1)
         
-
     def predict_fid(self, gv1, y_mask = None, force = False, use_lib = 2000, probs = False) :
         """
         gv1     N, Fout+F'

@@ -6,7 +6,6 @@ from typing import Tuple, Union
 import gc
 
 from utils.brics import BRICSLibrary
-import metric
 
 bceloss = nn.BCELoss()
 celoss = nn.CrossEntropyLoss()
@@ -63,7 +62,7 @@ class NS_Trainer(nn.Module) :
         else :
             gvp = self.model.gv_lib[y_fid]
         prob_p = self.model.calculate_prob(gv1, gvp)                # (N)
-        fid_ploss = metric.fragment_predict_loss(prob_p, 1.0)
+        fid_ploss = (prob_p + 1e-12).log()
 
         fid_nloss = 0
         for _ in range(self.n_sample) :
@@ -74,7 +73,7 @@ class NS_Trainer(nn.Module) :
             else :
                 gvn = self.model.gv_lib[y_neg]
             prob_n = self.model.calculate_prob(gv1, gvn)      # (N)
-            fid_nloss += metric.fragment_predict_loss(prob_n, 0.0)
+            fid_nloss += (1. - prob_n + 1e-12).log()
         fid_nloss/=self.n_sample
 
         logit_idx = self.model.predict_idx(h, adj, _h, gv1, gvp, cond, probs=False)
