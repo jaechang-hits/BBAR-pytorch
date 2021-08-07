@@ -7,54 +7,43 @@ from rdkit import Chem, RDLogger
 from rdkit.Chem import Mol
 from typing import Dict, Union, Any, List, Optional, Callable
 import gc
+import os
 
 from utils import brics, common, feature
 
 RDLogger.DisableLog('rdApp.*')
 
 class MoleculeBuilder() :
-    def __init__(
-        self,
-        model: str,     # Model path
-        library: str,   # Library path
-        library_npz: Optional[str] = None,   #Library feature path
-        cal_gv_lib: bool = False,   # calculate library graph vector
-        target: Dict[str, float] = {},
-        batch_size: int = 32,
-        num_workers: int = 0,
-        filter_fn : Optional[Callable] = None,
-        device : Union[str, torch.device] = 'cuda:0'
-        ) :
+    def __init__(self, cfg, filter_fn : Optional[Callable] = None) :
+        self.cfg = cfg
+        if cfg.gpus == 1 :
+            device ='cuda:0'
+        else :
+            device = 'cpu'
+        self.device = device
 
-        self.model = torch.load(model, map_location = device)
+        self.model = torch.load(cfg.model_path, map_location = device)
         self.model.eval()
 
-        self.library = brics.BRICSLibrary(library, save_mol = True)
+        self.library = brics.BRICSLibrary(cfg.library_path, save_mol = True)
+        self.library_freq = torch.from_numpy(self.library.freq.to_numpy()).to(device) ** cfg.alpha
         self.lib_size = len(self.library)
-        if cal_gv_lib or len(getattr(self.model, 'gv_lib', [])) != self.lib_size :
-            if library_npz is not None:
-                f = np.load(library_npz)
-                h = torch.from_numpy(f['h']).float().to(device)
-                adj = torch.from_numpy(f['adj']).bool().to(device)
-                f.close()
-            else:
-                h, adj = self.get_library_feature()
-                h = h.float().to(device)
-                adj = adj.bool().to(device)
+        self.n_lib_sample = min(self.lib_size, cfg.n_library_sample)
+        if cfg.update_gv_lib or len(getattr(self.model, 'gv_lib', [])) != self.lib_size :
+            h, adj = self.get_library_feature()
             with torch.no_grad() :
                 gv_lib = self.model.g2v2(h, adj)
                 self.model.save_gv_lib(gv_lib)
 
-        self.batch_size = batch_size
-        self.num_workers = num_workers
+        self.batch_size = cfg.batch_size
+        self.num_workers = cfg.num_workers
 
         if filter_fn :
             self.filter_fn = filter_fn
         else :
             self.filter_fn = lambda x : True
 
-        self.device = device
-        self.cond = self.model.get_cond (target).unsqueeze(0).repeat(batch_size, 1).to(device)
+        self.cond = self.model.get_cond (cfg.target).unsqueeze(0).repeat(self.batch_size, 1).to(device)
 
     @torch.no_grad()
     def generate(
@@ -102,7 +91,8 @@ class MoleculeBuilder() :
                     break
 
                 # Predict Fid2
-                prob_dist_fid2 = self.model.predict_fid(gv1, probs=True, use_lib = 5000).squeeze(-1)     # (N, N_lib)
+                use_lib = self.get_sample(h1.size(0))
+                prob_dist_fid2 = self.model.predict_fid(gv1, probs=True, use_lib = use_lib).squeeze(-1)     # (N, N_lib)
                 # Check whether the prob dist is valid or not
                 valid = torch.logical_not(torch.isnan(prob_dist_fid2.sum(-1)))
                 h1, adj1, gv1, _h1 = h1[valid], adj1[valid], gv1[valid], _h1[valid]
@@ -113,7 +103,10 @@ class MoleculeBuilder() :
                 num_atoms1 = h1.size(1)
                 # Sampling
                 m = Categorical(probs = prob_dist_fid2)
-                fid2 = m.sample()
+                if use_lib is not None:
+                    fid2 = torch.gather(use_lib, 1, m.sample().unsqueeze(-1)).squeeze(-1)
+                else :
+                    fid2 = m.sample()
                 gv2 = self.model.gv_lib[fid2]
                 
                 # Predict Index
@@ -174,15 +167,35 @@ class MoleculeBuilder() :
         return idx_mask
 
     def get_library_feature(self) :
-        max_atoms = max([m.GetNumAtoms() for m in self.library.mol])
-        v, adj = [], []
-        for m in self.library.mol :
-            v.append(feature.get_atom_features(m, max_atoms, True))
-            adj.append(feature.get_adj(m, max_atoms))
+        library_feature_path = os.path.splitext(self.cfg.library_path)[0] + '.npz'
+        if os.path.exists(library_feature_path) :
+            f = np.load(library_feature_path)
+            v = torch.from_numpy(f['h']).float().to(self.device)
+            adj = torch.from_numpy(f['adj']).bool().to(self.device)
+            f.close()
+        else:
+            max_atoms = max([m.GetNumAtoms() for m in self.library.mol])
+            v, adj = [], []
+            for m in self.library.mol :
+                v.append(feature.get_atom_features(m, max_atoms, True))
+                adj.append(feature.get_adj(m, max_atoms))
 
-        v = torch.stack(v)
-        adj = torch.stack(adj)
+            v = torch.stack(v)
+            adj = torch.stack(adj)
+            np.savez(library_feature_path, h=v.numpy(), adj=adj.numpy().astype('?'), \
+                     freq=self.library.freq.to_numpy())
+            v = v.float().to(self.device)
+            adj = adj.bool().to(self.device)
+            
         return v, adj
+
+    def get_sample(self, n_sample) :
+        if self.n_lib_sample == self.lib_size :
+            return None
+        else :
+            freq = self.library_freq.expand(n_sample, self.lib_size)
+            idxs = torch.multinomial(freq, self.n_lib_sample, False)
+            return idxs
 
 class MPDataset(Dataset) :
     def __init__(self, dataset, library) :

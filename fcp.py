@@ -31,7 +31,6 @@ class FCP(nn.Module) :
             self.cond_size = 0
 
         self.gv_lib = None
-        self.gv_lib_batch = None
 
         # Graph To Vec
         self.gem1_1 = GraphEncodingModel(NUM_ATOM_FEATURES, self.cond_size, hidden_size11, hidden_size12, n_layer, dropout)
@@ -73,23 +72,20 @@ class FCP(nn.Module) :
     def predict_termination(self, gv1) :
         return self.tcm(gv1)
         
-    def predict_fid(self, gv1, y_mask = None, force = False, use_lib = 2000, probs = False) :
+    def predict_fid(self, gv1, use_lib = None, probs = False) :
         """
         gv1     N, Fout+F'
         y_mask  N, N_lib
         """
-        if use_lib is None :
-            use_lib = self.gv_lib.size(0)
-
         batch_size = gv1.size(0)
-        if force or self.gv_lib_batch is None or self.gv_lib_batch.size(0) < batch_size :
-            self.gv_lib_batch = self.gv_lib[:use_lib].unsqueeze(0).repeat(batch_size, 1, 1)
-                                                                            # (N, N_lib, F)
-        gv1 = gv1.unsqueeze(1).repeat(1, use_lib, 1)                        # (N, N_lib, F+F')
-        y = self.fsm(gv1, self.gv_lib_batch[:batch_size])
+        if use_lib is None :
+            gv_lib_batch = self.gv_lib.unsqueeze(0).repeat(batch_size, 1, 1)
+        else :
+            gv_lib_batch = self.gv_lib[use_lib]                             # (N, N_lib, F)
+        n_lib = gv_lib_batch.size(1)
 
-        if y_mask is not None :
-            y.masked_fill_(y_mask[:, :use_lib], 0.0)                        # (N, N_lib)
+        gv1 = gv1.unsqueeze(1).repeat(1, n_lib, 1)                # (N, N_lib, F+F')
+        y = self.fsm(gv1, gv_lib_batch)
 
         if probs :
             y = y / y.sum(-1, keepdim = True)

@@ -12,7 +12,8 @@ save_property: True
 generator:
     model_path: ${model_path}
     library_path: ${data_dir}/library.csv
-    library_feature_path: null
+    n_library_sample: 1000
+    alpha: 1.0
     update_gv_lib: False
     target: ${condition}
     gpus: 1

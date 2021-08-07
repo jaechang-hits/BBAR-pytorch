@@ -20,13 +20,7 @@ def main(cfg) :
     cfg, logger = sample_manager(cfg, cfg.save_dir)
     mb_cfg = cfg.generator
 
-    if mb_cfg.gpus == 1 :
-        device ='cuda:0'
-    else :
-        device = 'cpu'
-
-    mb = MoleculeBuilder(mb_cfg.model_path, mb_cfg.library_path, mb_cfg.library_feature_path, mb_cfg.update_gv_lib,\
-                         mb_cfg.target, mb_cfg.batch_size, mb_cfg.num_workers, None, device)
+    mb = MoleculeBuilder(mb_cfg, None)
     start_frag_list = common.load_txt(cfg.start_frag_path)
     total_n_sample = cfg.n_sample * len(start_frag_list)
     sample_dict = {}
