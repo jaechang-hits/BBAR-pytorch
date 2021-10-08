@@ -1,7 +1,8 @@
 name: debug
 save_dir: sample/
-data_dir: data/
+data_dir: data/molport/
 model_path: <model>
+gpus: 1
 
 condition: {}
 n_sample: 100
@@ -12,11 +13,10 @@ save_property: True
 generator:
     model_path: ${model_path}
     library_path: ${data_dir}/library.csv
-    n_library_sample: 1000
+    n_library_sample: 2000
     alpha: 0.75
     update_gv_lib: False
     target: ${condition}
-    gpus: 1
     batch_size: 512
     num_workers: 0
     idx_masking: True

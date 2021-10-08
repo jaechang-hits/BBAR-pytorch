@@ -1,26 +1,21 @@
-import os
 import numpy as np
-import torch
-import random
 import logging
 import time
-torch.manual_seed(0)
-torch.cuda.manual_seed(0)
-np.random.seed(0)
-random.seed(0)
-torch.backends.cudnn.deterministic = True
 
-from generator import MoleculeBuilder
 from utils import common
 from utils.hydra_runner import hydra_runner
 from utils.exp_manager import sample_manager
 
+from src.generator import MoleculeBuilder
+
 @hydra_runner(config_path='conf', config_name='sample')
 def main(cfg) : 
+    common.set_seed(0)
     cfg, logger = sample_manager(cfg, cfg.save_dir)
     mb_cfg = cfg.generator
+    device = common.set_device(cfg.gpus)
 
-    mb = MoleculeBuilder(mb_cfg, None)
+    mb = MoleculeBuilder(mb_cfg, device, None)
     if cfg.start_frag_path is not None :
         start_frag_list = common.load_txt(cfg.start_frag_path)
     else :
