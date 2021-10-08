@@ -8,7 +8,7 @@ from rdkit.Chem import Mol
 from typing import List, Tuple, Optional
 import gc
 
-from utils import feature, brics
+from .utils import feature, brics
 RDLogger.DisableLog('rdApp.*')
 
 __all__ = ['FCPDataset']

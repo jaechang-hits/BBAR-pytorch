@@ -21,6 +21,7 @@ def main(cfg) :
     ns_cfg = cfg.ns_trainer
     cond_cfg = cfg.condition
     data_cfg = cfg.data
+    model_cfg = cfg.model
     cfg, save_dir = train_manager(cfg, cfg.exp_dir)
 
     device = common.set_device(train_cfg.gpus)
@@ -43,9 +44,9 @@ def main(cfg) :
     n_train = len(train_ds)
     n_val = len(val_ds)
 
-    model = FCP(cond_scale)
+    model = FCP(cond_scale, model_cfg)
     model.initialize_parameters()
-    trainer = NS_Trainer(model, ns_cfg.library_feature_path, ns_cfg.n_sample, ns_cfg.alpha, device)
+    trainer = NS_Trainer(model, ns_cfg.library_path, ns_cfg.n_sample, ns_cfg.alpha, device)
     logging.info(f"number of parameters : {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=train_cfg.lr)
@@ -53,6 +54,8 @@ def main(cfg) :
     logging.info(f'num of datapoint per epoch: {data_cfg.train.sampler.n_sample}')
     logging.info(f'num of val data: {n_val}\n')
 
+    ctime = common.get_ctime(cfg.timezone)
+    logging.info(f'[{ctime}]\tTrain Start')
     for epoch in range(train_cfg.max_epoch) :
         st = time.time()
         # Train
@@ -88,7 +91,7 @@ def main(cfg) :
         fnloss = np.mean(np.array(fnloss_list))
         iloss = np.mean(np.array(iloss_list))
 
-        ctime = common.get_ctime()
+        ctime = common.get_ctime(cfg.timezone)
         end = time.time()
         logging.info(
             f'[{ctime}]\t'
@@ -103,8 +106,8 @@ def main(cfg) :
         
         model.eval()
         trainer.model_save_gv_lib()
-        save_file = os.path.join(save_dir, f'save{epoch}.pt')
-        torch.save(model, save_file)
+        save_file = os.path.join(save_dir, f'save{epoch}.tar')
+        model.save(save_file)
 
         # Validation
         st = time.time()
@@ -134,7 +137,7 @@ def main(cfg) :
         fploss = np.mean(np.array(fploss_list))
         fnloss = np.mean(np.array(fnloss_list))
         
-        ctime = common.get_ctime()
+        ctime = common.get_ctime(cfg.timezone)
         end = time.time()
         logging.info(
             f'[{ctime}]\t'

@@ -2,27 +2,14 @@ import torch
 import torch.nn as nn
 from torch import FloatTensor, BoolTensor
 from typing import Tuple, Dict
-from models import GraphEncodingModel, Graph2Vec, TerminationCheckModel, FragmentSelectionModel, IndexSelectionModel
-from utils.feature import NUM_ATOM_FEATURES, NUM_ATOM_FEATURES_BRICS
+
+from .models import GraphEncodingModel, Graph2Vec, TerminationCheckModel, FragmentSelectionModel, IndexSelectionModel
+from .utils.feature import NUM_ATOM_FEATURES, NUM_ATOM_FEATURES_BRICS
 
 class FCP(nn.Module) :
-    def __init__ (self,
-                  cond_scale,
-                  hidden_size11=64,     # embedding size of node feature
-                  hidden_size12=64,     # output size of GConv
-                  hidden_size13=128,    # hidden size in readout layer
-                  gv_size1=128,
-                  gv_size2=128,
-                  hidden_size21=128,    # hidden size of Termination Check Model
-                  hidden_size31=128,    # hidden size of Fragment Selection Model
-                  hidden_size41=64,     # embedding size of node feature (Connection Part)
-                  hidden_size42=64,     # output size of GConv (Connection Part)
-                  hidden_size51=64,     # hidden size of Connection Selection Model
-                  n_layer = 4,
-                  dropout = 0.0
-                  ) :
+    def __init__ (self, cond_scale, cfg) :
         super(FCP, self).__init__()
-
+        self._cfg = cfg
         if cond_scale is not None :
             self.cond_scale = cond_scale
             self.cond_size = len(self.cond_scale)
@@ -31,24 +18,26 @@ class FCP(nn.Module) :
             self.cond_size = 0
 
         self.gv_lib = None
+        gv_size1 = cfg.Readout1.output_size
+        gv_size2 = cfg.Readout2.output_size
 
         # Graph To Vec
-        self.gem1_1 = GraphEncodingModel(NUM_ATOM_FEATURES, self.cond_size, hidden_size11, hidden_size12, n_layer, dropout)
-        self.readout1 = Graph2Vec(hidden_size12, hidden_size13, gv_size1, self.cond_size, dropout)
+        self.gem1_1 = GraphEncodingModel(NUM_ATOM_FEATURES, self.cond_size, **cfg.GraphEncodingModel1)
+        self.readout1 = Graph2Vec(cond_size = self.cond_size, **cfg.Readout1)
 
-        self.gem1_2 = GraphEncodingModel(NUM_ATOM_FEATURES_BRICS, None, hidden_size11, hidden_size12, n_layer, dropout)
-        self.readout2 = Graph2Vec(hidden_size12, hidden_size13, gv_size2, 0, dropout)
+        self.gem1_2 = GraphEncodingModel(NUM_ATOM_FEATURES_BRICS, None, **cfg.GraphEncodingModel2)
+        self.readout2 = Graph2Vec(cond_size = 0, **cfg.Readout2)
 
         # Terminate Check
-        self.tcm = TerminationCheckModel(gv_size1, hidden_size21, dropout)
+        self.tcm = TerminationCheckModel(**cfg.TerminationCheckModel)
 
         # Fragment Section
-        self.fsm = FragmentSelectionModel(gv_size1, gv_size2, hidden_size31, dropout)
+        self.fsm = FragmentSelectionModel(**cfg.FragmentSelectionModel)
 
         # Index Selection
         cond_size = self.cond_size + gv_size1 + gv_size2
-        self.gem2_1 = GraphEncodingModel(hidden_size12, cond_size, hidden_size41, hidden_size42, n_layer, dropout)
-        self.ism = IndexSelectionModel(NUM_ATOM_FEATURES + hidden_size42, hidden_size51, dropout)
+        self.gem2_1 = GraphEncodingModel(cond_input_size=cond_size, **cfg.GraphEncodingModel3)
+        self.ism = IndexSelectionModel(NUM_ATOM_FEATURES + cfg.GraphEncodingModel3.hidden_size, **cfg.IndexSelectionModel)
 
     def initialize_parameters(self) :
         for param in self.parameters() :
@@ -153,3 +142,18 @@ class FCP(nn.Module) :
     @staticmethod
     def standardize(var, std_var) :
         return (var - std_var.mean) / std_var.std
+
+    def save(self, save_file) :
+        torch.save({'model_state_dict': self.state_dict(),
+                    'config': self._cfg,
+                    'cond_scale': self.cond_scale,
+                    'gv_lib_size': self.gv_lib.size()}, save_file)
+
+    @classmethod
+    def load(cls, save_file, map_location) :
+        checkpoint = torch.load(save_file, map_location = map_location)
+        model = cls(checkpoint['cond_scale'], checkpoint['config'])
+        model.gv_lib = nn.Parameter(torch.empty(checkpoint['gv_lib_size']))
+        model.load_state_dict(checkpoint['model_state_dict'])
+        model.to(map_location)
+        return model

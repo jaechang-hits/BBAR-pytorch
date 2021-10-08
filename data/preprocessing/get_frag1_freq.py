@@ -21,6 +21,6 @@ if __name__ == '__main__' :
     parser = argparse.ArgumentParser()
     parser.add_argument('run_directory', type=str)
     parser.add_argument('--dataset', type=str, default='train.csv')
-    parser.add_argument('--output', type=str, default='train_weight.npz')
+    parser.add_argument('--output', type=str, default='train_weight.npy')
     args = parser.parse_args()
     main(args)

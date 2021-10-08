@@ -1,38 +1,86 @@
 name: debug
-data_dir: data
+data_dir: data/molport
 exp_dir: result
+timezone: 0
 
 #Train
 train:
     gpus: 1
+    num_workers: 4
     lr: 0.001
     validation: True
     max_epoch: 30
 
 ns_trainer:
-    library_feature_path: ${data_dir}/library.npz
+    library_path: ${data_dir}/library.csv
     n_sample: 10
     alpha: 0.75
 
 #Condition
 condition:
-    db_file: ${data_dir}/malt.db
+    db_file: ${data_dir}/property.db
     descriptors: []
+
+model:
+    dropout: 0.0
+    GraphEncodingModel1:
+        node_hidden_size: 64
+        hidden_size: 64
+        n_layer: 4
+        dropout: ${model.dropout}
+    Readout1:
+        input_size: ${model.GraphEncodingModel1.hidden_size}
+        hidden_size: 128
+        output_size: 128
+        dropout: ${model.dropout}
+
+    GraphEncodingModel2:
+        node_hidden_size: 64
+        hidden_size: 64
+        n_layer: 4
+        dropout: ${model.dropout}
+    Readout2:
+        input_size: ${model.GraphEncodingModel2.hidden_size}
+        hidden_size: 128
+        output_size: 128
+        dropout: ${model.dropout}
+
+    TerminationCheckModel:
+        input_size: ${model.Readout1.output_size}
+        hidden_size: 128
+        dropout: ${model.dropout}
+
+    FragmentSelectionModel:
+        input_size1: ${model.Readout1.output_size}
+        input_size2: ${model.Readout2.output_size}
+        hidden_size: 128
+        dropout: ${model.dropout}
+
+    GraphEncodingModel3:
+        node_input_size: ${model.GraphEncodingModel1.hidden_size}
+        node_hidden_size: 64
+        hidden_size: 64
+        n_layer: 4
+        dropout: ${model.dropout}
+
+    IndexSelectionModel:
+        hidden_size: 64
+        dropout: ${model.dropout}
 
 data:
     train:
         data_path: ${data_dir}/train.csv
         batch_size: 128
-        num_workers: 8
+        num_workers: ${train.num_workers}
         max_atoms: 50
         sampler:
-            _target_: utils.train_utils.BalancedSampler
+            _target_: src.utils.train_utils.BalancedSampler
             weight_path: ${data_dir}/train_weight.npy
             n_sample: 4000000
     val:
         data_path: ${data_dir}/val.csv
         batch_size: 256
-        num_workers: 8
+        num_workers: ${train.num_workers}
         max_atoms: 50
 
 

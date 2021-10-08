@@ -8,7 +8,8 @@ from rdkit import Chem, RDLogger
 from rdkit.Chem import Mol
 from typing import Dict, Union, Any, List, Optional, Callable
 
-from utils import brics, feature
+from .fcp import FCP
+from .utils import brics, feature
 
 RDLogger.DisableLog('rdApp.*')
 
@@ -17,7 +18,7 @@ class MoleculeBuilder() :
         self.cfg = cfg
         self.device = device
 
-        self.model = torch.load(cfg.model_path, map_location = self.device)
+        self.model = FCP.load(cfg.model_path, map_location = self.device)
         self.model.eval()
 
         self.library = brics.BRICSLibrary(cfg.library_path, save_mol = True)
@@ -26,7 +27,7 @@ class MoleculeBuilder() :
         self.lib_size = len(self.library)
         self.n_lib_sample = min(self.lib_size, cfg.n_library_sample)
         if cfg.update_gv_lib or len(getattr(self.model, 'gv_lib', [])) != self.lib_size :
-            h, adj = self.get_library_feature()
+            h, adj, _ = self.get_library_feature()
             with torch.no_grad() :
                 gv_lib = self.model.g2v2(h, adj)
                 self.model.save_gv_lib(gv_lib)

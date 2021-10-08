@@ -5,6 +5,9 @@ import numpy as np
 import torch
 from torch import FloatTensor, BoolTensor
 from typing import Union, Tuple, Optional, List
+import os
+
+from .brics import BRICSLibrary
 
 # cited from https://github.com/chemprop/chemprop.git
 # We add atom feature period, group, brics_idx, electronegativity
@@ -79,6 +82,40 @@ def get_adj(mol: Union[Mol,str],
     n_atom = len(adj)
     padded_adj[:n_atom, :n_atom] = adj
     return torch.from_numpy(padded_adj)
+
+def get_library_feature(library: BRICSLibrary = None,
+                        library_path: str = None,
+                        library_feature_path: str = None,
+                        device: Union[torch.device, str] = 'cpu') :
+    assert (library is not None) or (library_path is not None)
+    assert (library_path is not None) or (library_feature_path is not None)
+    if library_feature_path is None :
+        library_feature_path = os.path.splitext(library_path)[0] + '.npz'
+    if os.path.exists(library_feature_path) :
+        f = np.load(library_feature_path)
+        v = torch.from_numpy(f['h']).float().to(device)
+        adj = torch.from_numpy(f['adj']).bool().to(device)
+        freq = torch.from_numpy(f['freq']).float().to(device)
+        f.close()
+    else:
+        if library is None :
+            library = BRICSLibrary(library_path)
+        max_atoms = max([m.GetNumAtoms() for m in library.mol])
+        v, adj = [], []
+        for m in library.mol :
+            v.append(get_atom_features(m, max_atoms, True))
+            adj.append(get_adj(m, max_atoms))
+
+        v = torch.stack(v)
+        adj = torch.stack(adj)
+        freq = library.freq.to_numpy()
+        np.savez(library_feature_path, h=v.numpy(), adj=adj.numpy().astype('?'), \
+                 freq=freq)
+        v = v.float().to(device)
+        adj = adj.bool().to(device)
+        freq = torch.from_numpy(freq).float().to(device)
+        
+    return v, adj, freq
 
 def _atom_features(atom: Atom, brics: bool) -> List[Union[int, float]]:
     atomic_num = atom.GetAtomicNum()

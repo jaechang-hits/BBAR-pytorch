@@ -3,28 +3,23 @@ import torch.nn as nn
 import numpy as np
 from torch import LongTensor, BoolTensor, FloatTensor
 from typing import Tuple, Union
-import gc
 
-from utils.brics import BRICSLibrary
+from .utils.feature import get_library_feature
 
 bceloss = nn.BCELoss()
 celoss = nn.CrossEntropyLoss()
 
 class NS_Trainer(nn.Module) :
-    def __init__(self, model, library_npz_file: str, n_sample: int, alpha: float, device) :
+    def __init__(self, model, library_file: str, n_sample: int, alpha: float, device: Union[str, torch.device]) :
         super(NS_Trainer, self).__init__()
         self.model = model
         self.n_sample = n_sample
-        library_npz = np.load(library_npz_file)
-        self.library_h = torch.from_numpy(library_npz['h']).float().to(device)
-        self.library_adj = torch.from_numpy(library_npz['adj']).bool().to(device)
-        self.library_freq = torch.from_numpy(library_npz['freq'] ** alpha).unsqueeze(0).to(device)
+        h, adj, freq = get_library_feature(library_path = library_file, device = device)
+        self.library_h, self.library_adj, self.library_freq = h, adj, freq
         self.lib_size = self.library_h.size(0)
         self.lib_node_size = self.library_h.size(1)
         self.library_h.requires_grad_(False)
         self.library_adj.requires_grad_(False)
-        library_npz.close()
-        gc.collect()
         self.model.to(device)
 
     def forward(self, h: FloatTensor, adj: BoolTensor, cond: FloatTensor, y_fid: LongTensor, y_idx: LongTensor, train=True) :
