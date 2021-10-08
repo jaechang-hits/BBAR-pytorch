@@ -27,8 +27,6 @@ def train_manager(cfg, exp_dir='result') :
 
     return cfg, save_dir
 
-exp_manager = train_manager
-
 def sample_manager(cfg, exp_dir='sample') :
     Path(exp_dir).mkdir(parents=True, exist_ok=True)
     

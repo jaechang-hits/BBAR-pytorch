@@ -3,32 +3,25 @@ import torch
 import numpy as np
 from torch.utils.data import DataLoader, WeightedRandomSampler
 import time
-import random
-import sys
-import gc
 import logging
 
-from fcp import FCP
-from cond_module import Cond_Module
-from ns_module import NS_Trainer
-from dataset import FCPDataset
-from utils import common, brics
-from utils.hydra_runner import hydra_runner
-from utils.exp_manager import exp_manager
+from src.fcp import FCP
+from src.cond_module import Cond_Module
+from src.ns_module import NS_Trainer
+from src.dataset import FCPDataset
 
-torch.manual_seed(42)
-torch.cuda.manual_seed(42)
-np.random.seed(42)
-random.seed(42)
-torch.backends.cudnn.deterministic = True
+from utils import common
+from utils.hydra_runner import hydra_runner
+from utils.exp_manager import train_manager
 
 @hydra_runner(config_path='conf', config_name='train')
 def main(cfg) : 
+    common.set_seed(0)
     train_cfg = cfg.train
     ns_cfg = cfg.ns_trainer
     cond_cfg = cfg.condition
     data_cfg = cfg.data
-    cfg, save_dir = exp_manager(cfg, cfg.exp_dir)
+    cfg, save_dir = train_manager(cfg, cfg.exp_dir)
 
     device = common.set_device(train_cfg.gpus)
 
@@ -51,7 +44,7 @@ def main(cfg) :
     n_val = len(val_ds)
 
     model = FCP(cond_scale)
-    common.init_model(model)
+    model.initialize_parameters()
     trainer = NS_Trainer(model, ns_cfg.library_feature_path, ns_cfg.n_sample, ns_cfg.alpha, device)
     logging.info(f"number of parameters : {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 

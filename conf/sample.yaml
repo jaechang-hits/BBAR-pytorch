@@ -2,6 +2,7 @@ name: debug
 save_dir: sample/
 data_dir: data/
 model_path: <model>
+gpus: 1
 
 condition: {}
 n_sample: 100
@@ -16,7 +17,6 @@ generator:
     alpha: 0.75
     update_gv_lib: False
     target: ${condition}
-    gpus: 1
     batch_size: 512
     num_workers: 0
     idx_masking: True

@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import numpy as np
+import random
 import csv
 import time
 import logging
@@ -19,13 +21,6 @@ def load_txt(txtfile: str) -> list :
     lines = [l.strip() for l in lines]
     return lines
 
-def init_model (model) :
-    for param in model.parameters() :
-        if param.dim() == 1 :
-            continue
-        else :
-            nn.init.xavier_normal_(param)
-
 def set_device(gpus) -> torch.device :
     if gpus == 0 :
         return torch.device('cpu')
@@ -35,3 +30,9 @@ def set_device(gpus) -> torch.device :
     else :
         return torch.device('cuda')
 
+def set_seed(seed) :
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
