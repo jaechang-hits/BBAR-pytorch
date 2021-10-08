@@ -160,3 +160,23 @@ class BRICSSplitter() :
 
         return convert_smiles, idx_list      
 
+def decompose(mol: Union[str, Mol], returnMols: bool = False, splitFrags: bool = False) -> List[str] :
+    """Use it when you are only interested in set of substructures
+       and are not interested in the connections between substructures."""
+    if isinstance(mol, str) :
+        mol = Chem.MolFromSmiles(mol)
+    bricsbonds = BRICS.FindBRICSBonds(mol)
+    breakmol = BRICS.BreakBRICSBonds(mol, bricsbonds)
+    frag_set = list(Chem.GetMolFrags(breakmol, asMols=True))
+    if returnMols :
+        frag_set = [Chem.MolFromSmiles(Chem.MolToSmiles(f)) for f in frag_set]
+    else :
+        frag_set = [Chem.MolToSmiles(f) for f in frag_set]
+
+    if splitFrags :
+        retval = []
+        for frag in frag_set :
+            retval+=split_frag(frag, returnMols)
+        return retval
+    else :
+        return frag_set

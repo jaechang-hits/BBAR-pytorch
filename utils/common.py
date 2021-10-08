@@ -1,6 +1,8 @@
+import torch
 import torch.nn as nn
 import csv
 import time
+import logging
 
 def get_ctime() :
     return time.strftime("%y-%m-%d %H:%M:%S", time.gmtime(time.time()+32400))
@@ -23,3 +25,13 @@ def init_model (model) :
             continue
         else :
             nn.init.xavier_normal_(param)
+
+def set_device(gpus) -> torch.device :
+    if gpus == 0 :
+        return torch.device('cpu')
+    elif torch.cuda.device_count() == 0 :
+        logging.info("Warning: No Available GPU, CPU is used")
+        return torch.device('cpu')
+    else :
+        return torch.device('cuda')
+

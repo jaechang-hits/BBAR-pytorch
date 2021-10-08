@@ -30,16 +30,17 @@ def train_manager(cfg, exp_dir='result') :
 exp_manager = train_manager
 
 def sample_manager(cfg, exp_dir='sample') :
-    save_dir = os.path.join(exp_dir, cfg.name+'.csv')
     Path(exp_dir).mkdir(parents=True, exist_ok=True)
     
     cfg = OmegaConf.to_container(cfg, resolve=True)
     cfg = OmegaConf.create(cfg)
 
     if cfg.save_property:
+        save_dir = os.path.join(exp_dir, cfg.name+'.csv')
         descs = list(cfg.condition.keys())
         descs.sort()
     else :
+        save_dir = os.path.join(exp_dir, cfg.name+'.smi')
         descs = []
 
     logger = SampleLogger(save_dir, descs, cfg.formatter)
@@ -52,27 +53,36 @@ class SampleLogger() :
         self.desc_fn = {}
         self.desc = []
         self.formatter = {}
-        for d in desc:
-            if d not in desc_key :
-                logging.warning(f"WARNING: {d} doesn't exist in rdkit.Chem.Descriptors")
-            else :
-                self.desc.append(d)
-                self.desc_fn[d] = desc_dic[d]
-                self.formatter[d] = formatter.get(d, '.3f')
-        with open(save_dir, 'w') as w :
-            w.write('SMILES,'+','.join(self.desc) + '\n')
+        if len(desc) > 0 :
+            for d in desc:
+                if d not in desc_key :
+                    logging.warning(f"WARNING: {d} doesn't exist in rdkit.Chem.Descriptors")
+                else :
+                    self.desc.append(d)
+                    self.desc_fn[d] = desc_dic[d]
+                    self.formatter[d] = formatter.get(d, '.3f')
+            with open(save_dir, 'w') as w :
+                w.write('SMILES,'+','.join(self.desc) + '\n')
+        else :
+            with open(save_dir, 'w') as w :
+                pass
+
 
     def log(self, smiles_list) :
-        mol_list = [Chem.MolFromSmiles(s) for s in smiles_list]
-        if len(smiles_list) != len(mol_list) :
-            smiles_list = [Chem.MolToSmiles(m) for m in mol_list]
-        prob_result = {}
-        for d in self.desc :
-            prob_result[d] = [self.desc_fn[d](m) for m in mol_list]
-        
-        with open(self.save_dir, 'a') as w :
-            for i, s in enumerate(smiles_list) :
-                str_prob = [format(prob_result[d][i], self.formatter[d]) for d in self.desc]
-                w.write(f"{s},{','.join(str_prob)}\n")
-
-        
+        if len(self.desc) > 0 :
+            mol_list = [Chem.MolFromSmiles(s) for s in smiles_list]
+            if len(smiles_list) != len(mol_list) :
+                smiles_list = [Chem.MolToSmiles(m) for m in mol_list]
+            prop_result = {}
+            for d in self.desc :
+                prop_result[d] = [self.desc_fn[d](m) for m in mol_list]
+            
+            with open(self.save_dir, 'a') as w :
+                for i, s in enumerate(smiles_list) :
+                    if len(s) == 0 : continue
+                    str_prob = [format(prop_result[d][i], self.formatter[d]) for d in self.desc]
+                    w.write(f"{s},{','.join(str_prob)}\n")
+        else :
+            if len(smiles_list) > 0 :
+                with open(self.save_dir, 'a') as w :
+                    w.write('\n'.join(smiles_list) + '\n')

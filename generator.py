@@ -16,17 +16,14 @@ RDLogger.DisableLog('rdApp.*')
 class MoleculeBuilder() :
     def __init__(self, cfg, filter_fn : Optional[Callable] = None) :
         self.cfg = cfg
-        if cfg.gpus == 1 :
-            device ='cuda:0'
-        else :
-            device = 'cpu'
-        self.device = device
+        self.device = common.set_device(cfg.gpus)
 
-        self.model = torch.load(cfg.model_path, map_location = device)
+        self.model = torch.load(cfg.model_path, map_location = self.device)
         self.model.eval()
 
         self.library = brics.BRICSLibrary(cfg.library_path, save_mol = True)
-        self.library_freq = torch.from_numpy(self.library.freq.to_numpy()).to(device) ** cfg.alpha
+        library_freq = torch.from_numpy(self.library.freq.to_numpy()).to(self.device) ** cfg.alpha
+        self.library_freq = library_freq / library_freq.sum()
         self.lib_size = len(self.library)
         self.n_lib_sample = min(self.lib_size, cfg.n_library_sample)
         if cfg.update_gv_lib or len(getattr(self.model, 'gv_lib', [])) != self.lib_size :
@@ -43,16 +40,24 @@ class MoleculeBuilder() :
         else :
             self.filter_fn = lambda x : True
 
-        self.cond = self.model.get_cond (cfg.target).unsqueeze(0).repeat(self.batch_size, 1).to(device)
+        self.cond = self.model.get_cond (cfg.target).unsqueeze(0).repeat(self.batch_size, 1).to(self.device)
 
     @torch.no_grad()
     def generate(
         self,
-        start_fragment: str,
+        start_fragment: Optional[str],
         n_sample:int = 100,
         ) :
 
-        smiles1_list = np.array([start_fragment for _ in range(n_sample)])
+        if start_fragment is not None :
+            smiles1_list = np.array([start_fragment for _ in range(n_sample)])
+        if start_fragment is None :
+            idxs = list(range(len(self.library)))
+            draw = np.random.choice(idxs, n_sample, p=self.library_freq.to('cpu').numpy())
+            smiles1_list = self.library.get_smiles(draw).tolist()
+            smiles1_list = [brics.preprocess.remove_brics_label(smiles) for smiles in smiles1_list]
+            smiles1_list = np.array(smiles1_list)
+
         result_list = []
         total_step = 0
         step = 0
@@ -86,7 +91,6 @@ class MoleculeBuilder() :
                 h1, adj1, gv1, _h1 = h1[not_term], adj1[not_term], gv1[not_term], _h1[not_term]
                 idx1 = idx1[not_term]
                 smiles1_batch = smiles1_batch[not_term.cpu().numpy()]
-
                 if h1.size(0) == 0 :
                     break
 
@@ -94,11 +98,16 @@ class MoleculeBuilder() :
                 use_lib = self.get_sample(h1.size(0))
                 prob_dist_fid2 = self.model.predict_fid(gv1, probs=True, use_lib = use_lib).squeeze(-1)     # (N, N_lib)
                 # Check whether the prob dist is valid or not
-                valid = torch.logical_not(torch.isnan(prob_dist_fid2.sum(-1)))
+                invalid = torch.isnan(prob_dist_fid2.sum(-1))
+                valid = torch.logical_not(invalid)
+
                 h1, adj1, gv1, _h1 = h1[valid], adj1[valid], gv1[valid], _h1[valid]
                 prob_dist_fid2 = prob_dist_fid2[valid]
                 idx1 = idx1[valid]
                 smiles1_batch = smiles1_batch[valid.cpu().numpy()]
+                if h1.size(0) == 0 :
+                    break
+
                 n = h1.size(0)
                 num_atoms1 = h1.size(1)
                 # Sampling
@@ -112,10 +121,13 @@ class MoleculeBuilder() :
                 # Predict Index
                 prob_dist_idx = self.model.predict_idx(h1, adj1, _h1, gv1, gv2, self.cond[:n], probs=True)
                 # Masking
-                prob_dist_idx.masked_fill_(self.get_idx_mask(smiles1_batch, fid2, num_atoms1), 0)
-                valid = (torch.sum(prob_dist_idx, dim=-1) > 0).tolist()
-                smiles1_batch, fid2 = smiles1_batch[valid], fid2[valid]
-                prob_dist_idx = prob_dist_idx[valid]
+                if self.cfg.idx_masking :
+                    prob_dist_idx.masked_fill_(self.get_idx_mask(smiles1_batch, fid2, num_atoms1), 0)
+                    valid = (torch.sum(prob_dist_idx, dim=-1) > 0)
+                    valid_ = valid.tolist()
+                    smiles1_batch, fid2 = smiles1_batch[valid_], fid2[valid_]
+                    prob_dist_idx = prob_dist_idx[valid_]
+                    if fid2.size(0) == 0 : break
                 # Sampling
                 m = Categorical(probs = prob_dist_idx)
                 idx_batch = m.sample()
@@ -125,10 +137,10 @@ class MoleculeBuilder() :
                 frag2_batch = [self.library.get_mol(idx.item()) for idx in fid2]
                 for frag1, frag2, idx in zip(frag1_batch, frag2_batch, idx_batch) :
                     try :
-                        compose_smiles = brics.BRICSCompose.compose(frag1, frag2, int(idx), 0, force=False)
+                        compose_smiles = brics.BRICSCompose.compose(frag1, frag2, int(idx), 0, force=self.cfg.compose_force)
                     except:
                         continue
-                    if compose_smiles is None :
+                    if compose_smiles is None or len(compose_smiles) == 0 :
                         continue
                     if not self.filter_fn(compose_smiles) :
                         continue

@@ -21,39 +21,39 @@ def main(cfg) :
     mb_cfg = cfg.generator
 
     mb = MoleculeBuilder(mb_cfg, None)
-    start_frag_list = common.load_txt(cfg.start_frag_path)
+    if cfg.start_frag_path is not None :
+        start_frag_list = common.load_txt(cfg.start_frag_path)
+    else :
+        start_frag_list = [None]
     total_n_sample = cfg.n_sample * len(start_frag_list)
-    sample_dict = {}
+    total_sample_list = []
     total_step = 0
 
     st = time.time()
+    validity = []
+    uniqueness = []
     for i, start_frag in enumerate(start_frag_list) :
         sample_list, n_step = mb.generate(start_frag, n_sample = cfg.n_sample)
-        sample_dict[start_frag] = sample_list
+        validity.append(len(sample_list) / cfg.n_sample)
+        if len(sample_list) > 0 :
+            uniqueness.append(len(set(sample_list)) / len(sample_list))
         total_step += n_step
+        logger.log(sample_list)
     end = time.time()
 
-    validity = [len((sample_dict[start_frag])) / cfg.n_sample for start_frag in start_frag_list]
-    uniqueness = [len(set(sample_dict[start_frag])) / len(sample_dict[start_frag]) for start_frag in start_frag_list \
-                                                                                        if len(sample_dict[start_frag]) > 0]
     avg_validity = np.mean(np.array(validity))*100
-    avg_uniqueness = np.mean(np.array(uniqueness))*100
+
+    try :
+        avg_uniqueness = np.mean(np.array(uniqueness))*100
+    except :
+        avg_uniqueness = np.NAN
+
     avg_step = total_step / total_n_sample
-    """
     logging.info(f'validity: {avg_validity:.1f}\t'
                  f'uniqueness: {avg_uniqueness:.1f}\t'
                  f'num step: {avg_step:.2f}\t'
-                 f'time: {(end-st):.5f}\t'
-                 f'time: {(end-st)/total_n_sample:.5f}')
-    """
-    logging.info(f'{avg_validity:.1f}\t'
-                 f'{avg_uniqueness:.1f}\t'
-                 f'{avg_step:.2f}\t'
-                 f'{(end-st):.5f}\t'
-                 f'{(end-st)/total_n_sample:.5f}')
-
-    for start_frag in start_frag_list :
-        logger.log(sample_dict[start_frag])
+                 f'time: {(end-st)/total_n_sample:.5f}\t'
+                 f'total time: {(end-st):.5f}')
 
 if __name__ == '__main__' :
     main()

@@ -30,10 +30,7 @@ def main(cfg) :
     data_cfg = cfg.data
     cfg, save_dir = exp_manager(cfg, cfg.exp_dir)
 
-    if train_cfg.gpus == 1 :
-        device ='cuda:0'
-    else :
-        device = 'cpu'
+    device = common.set_device(train_cfg.gpus)
 
     if len(cond_cfg.descriptors) > 0 :
         cond_module = Cond_Module(cond_cfg.db_file, cond_cfg.descriptors)
