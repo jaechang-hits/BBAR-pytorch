@@ -27,7 +27,7 @@ class MoleculeBuilder() :
         self.lib_size = len(self.library)
         self.n_lib_sample = min(self.lib_size, cfg.n_library_sample)
         if cfg.update_gv_lib or len(getattr(self.model, 'gv_lib', [])) != self.lib_size :
-            h, adj, _ = self.get_library_feature()
+            h, adj = self.get_library_feature()
             with torch.no_grad() :
                 gv_lib = self.model.g2v2(h, adj)
                 self.model.save_gv_lib(gv_lib)
