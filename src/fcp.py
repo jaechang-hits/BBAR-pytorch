@@ -1,3 +1,4 @@
+import sys
 import torch
 import torch.nn as nn
 from torch import FloatTensor, BoolTensor
@@ -150,7 +151,8 @@ class FCP(nn.Module) :
                     'gv_lib_size': self.gv_lib.size()}, save_file)
 
     @classmethod
-    def load(cls, save_file, map_location) :
+    def load(cls, save_file, map_location='cuda') :
+        sys.path.insert(0, './src')
         checkpoint = torch.load(save_file, map_location = map_location)
         model = cls(checkpoint['cond_scale'], checkpoint['config'])
         model.gv_lib = nn.Parameter(torch.empty(checkpoint['gv_lib_size']))
