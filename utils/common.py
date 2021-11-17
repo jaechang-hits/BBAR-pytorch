@@ -6,8 +6,11 @@ import csv
 import time
 import logging
 
-def get_ctime(timezone=0) :
-    return time.strftime("%y-%m-%d %H:%M:%S", time.gmtime(time.time()+timezone*3600))
+def get_ctime(timezone = None) :
+    if timezone is None :
+        return time.strftime("%y-%m-%d %H:%M:%S", time.localtime(time.time()))
+    else :
+        return time.strftime("%y-%m-%d %H:%M:%S", time.gmtime(time.time()+timezone*3600))
 
 def load_csv(csvfile: str) -> list :
     with open(csvfile) as f :

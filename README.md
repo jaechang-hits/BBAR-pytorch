@@ -57,9 +57,7 @@ id2,C1CCCC1,35.1,251.2,...
 - SMILES must be RDKit-readable.
 - If you want to train a single molecule set with different properties, you don't have to configure datasets separately for each property. You need to configure just one dataset file which contains all of property information. For example, `molport/property.db` contains information about `ExactMolWt`, `MolLogP`, `TPSA` and we can train the model with a property pair `[ExactMolWt, MolLogP]`.
 
-1. Construct your dataset to the given format.
-2. Make directory for your own dataset in `data/`
-3. Put your own dataset into a directory with the name 'property.db'.
+After constructing your own dataset to the given format, make directory in `data/` and put your dataset with the name `property.db`.
 
 ### Preprocessing
 
@@ -106,7 +104,7 @@ After preprocessing step, the structure of directory `data/` is as follows. Our 
 
 Move to the root directory. Our script handles arguments and hyperparameters with Hydra module. The following commands are the minimum command for implementing our paper, and you can handle more arguments and hyperparameters with [hydra override](https://hydra.cc/docs/intro#basic-example).
 
-You can handle model hyperparameter with hydra module. The default setting is the hyperparameter used in our research data.
+You can handle model hyperparameter with hydra module. The default setting is the hyperparameter used in our research.
 
 Training Script Format Example (See `conf/train.yaml`)
 
@@ -129,17 +127,16 @@ python train.py \
 ```
 
 - `name`, `exp_dir`: The model output is saved at `<exp-dir>/<name>/`. Default setting of `exp_dir` is `result/`
-- `timezine`: Argument just for logging. Enter your timezone. Default value is 0.(gmt=0)
-- `data_dir`: Since the directory structure is fixed, you just need to use the data directory. If you change the data directory structure, you should add argument for each file according to the config file `conf/train.yaml`.
-- `condition.descriptors`: For control the target properties. Do not put spaces between each property.
-  - condition.descriptors='[]'  (O) # Default
-  - condition.descriptors='[MolLogP]'   (O)
-  - condition.descriptors='[MolLogP,TPSA]'  (O)
-  - condition.descriptors='[MolLogP, TPSA]' (O)
+- `timezine`: Argument just for logging. Enter your timezone. Default value is None.(System Time)
+- `data_dir`: Since the directory structure is fixed, you just need to use the data directory. If you change the data directory structure, you should add argument for each file according to the config file `conf/train.yaml`. Default value is `data/molport/`
+- `condition.descriptors`: For control the target properties.
+  - condition.descriptors='[]'          # Default, Unconditional
+  - condition.descriptors='[MolLogP]'
+  - condition.descriptors='[MolLogP,TPSA]'
 - `ns_trainer.n_sample`: Number of negative samples. Default value is 10.
 - `ns_trainer.alpha`: Power value of fragment frequency distribution. Default value is 0.75, which is commonly used in Word2Vec. *Mikolov, T. et al, (2013)*
 - `data.train.sampler.n_sample`: The training step uses a balanced sampler. This parameter is according to `num_samples` of  `torch.utils.data.WeightedRandomSampler`. Default value is 4,000,000.
-- `data.train.max_atoms`, `data.val.max_atoms`: For simple implementation, the maximum number of atoms is limited. Enter the maximum number of atoms of molecules in the dataset. Default value is 50.
+- `data.train.max_atoms`, `data.val.max_atoms`: For simple implementation, our model requires the maximum number of atoms. Enter the maximum number of atoms of molecules in the dataset. Default value is 50.
 
 Example running script.
 
@@ -148,7 +145,7 @@ python train.py \
     name='logp-tpsa' \
     exp_dir='result/molport' \
     data_dir='data/molport' \
-    condition.descriptors='[MolLogP, TPSA]' \
+    condition.descriptors='[MolLogP,TPSA]' \
     train.num_workers=4 \
     train.max_epoch=10 \
     data.train.batch_size=128 \

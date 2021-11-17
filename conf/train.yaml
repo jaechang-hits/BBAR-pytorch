@@ -1,7 +1,7 @@
 name: debug
 data_dir: data/molport
 exp_dir: result
-timezone: 0
+timezone: null
 
 #Train
 train:
