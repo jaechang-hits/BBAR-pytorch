@@ -61,10 +61,12 @@ NUM_ATOM_FEATURES = NUM_ATOM_FEATURES_BRICS - 17
 # 6 + 9 + 0  + 7 + 10 + 6 + 6 + 7 + 1 + 2 = 54
 
 def get_atom_features(mol: Union[Mol,str],
-                      max_atoms: int,
-                      brics: bool) -> FloatTensor :
+                      max_atoms: Optional[int] = None,
+                      brics: bool = False) -> FloatTensor :
     if isinstance(mol, str) :
         mol = Chem.MolFromSmiles(mol)
+    if max_atoms is None :
+        max_atoms = mol.GetNumAtoms()
     if brics :
         af = torch.zeros((max_atoms, NUM_ATOM_FEATURES_BRICS), dtype=torch.float)
     else :
@@ -74,9 +76,11 @@ def get_atom_features(mol: Union[Mol,str],
     return af
 
 def get_adj(mol: Union[Mol,str],
-            max_atoms: int) -> BoolTensor :
+            max_atoms: Optional[int] = None) -> BoolTensor :
     if isinstance(mol, str) :
         mol = Chem.MolFromSmiles(mol)
+    if max_atoms is None :
+        max_atoms = mol.GetNumAtoms()
     adj = GetAdjacencyMatrix(mol) + np.eye(mol.GetNumAtoms())
     padded_adj = np.zeros((max_atoms, max_atoms), dtype='b')
     n_atom = len(adj)

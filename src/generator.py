@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import torch
+import time
 from torch.distributions.categorical import Categorical
 from torch.distributions.bernoulli import Bernoulli
 from torch.utils.data import Dataset, DataLoader
@@ -45,13 +46,13 @@ class MoleculeBuilder() :
     @torch.no_grad()
     def generate(
         self,
-        start_fragment: Optional[str],
+        scaffold: Optional[str],
         n_sample:int = 100,
         ) :
 
-        if start_fragment is not None :
-            smiles1_list = np.array([start_fragment for _ in range(n_sample)])
-        if start_fragment is None :
+        if scaffold is not None :
+            smiles1_list = np.array([scaffold for _ in range(n_sample)])
+        if scaffold is None :
             idxs = list(range(len(self.library)))
             draw = np.random.choice(idxs, n_sample, p=self.library_freq.to('cpu').numpy())
             smiles1_list = self.library.get_smiles(draw).tolist()
@@ -150,6 +151,113 @@ class MoleculeBuilder() :
             smiles1_list = np.array(next_smiles1_list)
         return result_list, total_step
     
+    @torch.no_grad()
+    def __call__(
+        self,
+        scaffold: Optional[str],
+        ) :
+        def print_log(state, log, scaffold, smiles, step, start_time) :
+            end_time = time.time()
+            print(f"\n{state}\t({log})\n"
+                  f"\tstart  \t{scaffold}\n"
+                  f"\tlast   \t{smiles}\n"
+                  f"\tstep   \t{step}\n"
+                  f"\ttime   \t{end_time - start_time:.2f}\n"
+            )
+
+        step = 0
+
+        if scaffold is not None :
+            print(f"Start\n\t{scaffold}")
+            smiles1 = scaffold
+        if scaffold is None :
+            print(f"Start\n\t''")
+            step += 1
+            idxs = list(range(len(self.library)))
+            draw = int(np.random.choice(idxs, 1, p=self.library_freq.to('cpu').numpy()))
+            select_frag = self.library[draw]
+            smiles1 = brics.preprocess.remove_brics_label(select_frag)
+            print(f"Step {step}: random select from library (fid={draw})\n"
+                  f"\t{smiles1}")
+
+        start_time = time.time()
+        while True :
+            mol1 = Chem.MolFromSmiles(smiles1)
+            num_atoms1 = mol1.GetNumAtoms()
+            h1 = feature.get_atom_features(mol1, brics = False).to(self.device)
+            adj1 = feature.get_adj(mol1).to(self.device)
+
+            h1 = h1.unsqueeze(0)
+            adj1 = adj1.unsqueeze(0)
+            _h1, gv1 = self.model.g2v1(h1, adj1, self.cond[:1, :])                  # (1, F + F')
+
+            # Predict Termination
+            p_term = self.model.predict_termination(gv1)
+            # sampling
+            m = Bernoulli(probs=p_term)
+            term = m.sample().bool().item()
+            if term is True :
+                print_log('FINISH', '', scaffold, smiles1, step, start_time)
+                return smiles1
+
+            # Predict Fid2
+            use_lib = self.get_sample(1)
+            prob_dist_fid2 = self.model.predict_fid(gv1, probs=True, use_lib = use_lib).squeeze(-1)     # (1, N_lib)
+            # Check whether the prob dist is valid or not
+            invalid = torch.isnan(prob_dist_fid2.sum(-1)).item()
+
+            if invalid :
+                print_log('BREAK', 'NO_PROPER_FRAGMENT', scaffold, smiles1, step, start_time)
+                return None
+
+            # Sampling
+            m = Categorical(probs = prob_dist_fid2)
+            if use_lib is not None:
+                fid2 = torch.gather(use_lib, 1, m.sample().unsqueeze(-1)).squeeze(-1)
+            else :
+                fid2 = m.sample()
+            gv2 = self.model.gv_lib[fid2]
+            fid2 = fid2.item()
+            frag2 = self.library[fid2]
+            frag2_mol = self.library.get_mol(fid2)
+            
+            # Predict Index
+            prob_dist_idx = self.model.predict_idx(h1, adj1, _h1, gv1, gv2, self.cond[:1], probs=True)
+            # Masking
+            if self.cfg.idx_masking :
+                idx_mask = torch.ones((num_atoms1,), dtype=torch.bool, device=self.device)
+                cxn_idxs = [idx for idx, _ in brics.BRICSCompose.get_possible_indexs(mol1, frag2)]
+                idx_mask[cxn_idxs] = False
+
+                prob_dist_idx.masked_fill_(idx_mask.unsqueeze(0), 0)
+                valid = (torch.sum(prob_dist_idx, dim=-1) > 0).item()
+                if not valid :
+                    print_log('BREAK', 'NO_PROPER_CONNECTION_INDEX', scaffold, smiles1, step, start_time)
+                    return None
+
+            # Sampling
+            m = Categorical(probs = prob_dist_idx)
+            cxn_idx = m.sample().item()
+
+            # compose fragments
+            try :
+                compose_smiles = brics.BRICSCompose.compose(mol1, frag2, cxn_idx, 0, force=self.cfg.compose_force)
+            except:
+                print_log('BREAK', 'FAIL_COMPOSING', scaffold, smiles1, step, start_time)
+                return None
+            if compose_smiles is None or len(compose_smiles) == 0 :
+                print_log('BREAK', 'FAIL_COMPOSING', scaffold, smiles1, step, start_time)
+                return None
+            if not self.filter_fn(compose_smiles) :
+                print_log('BREAK', 'FILTERED', scaffold, smiles1, step, start_time)
+                return None
+            if Chem.MolFromSmiles(compose_smiles) :
+                step += 1 
+                smiles1 = compose_smiles
+                print(f"Step {step}: Add {frag2} ({fid2}) at index {cxn_idx}\n"
+                      f"\t{smiles1}")
+
+        return result_list, total_step
     @staticmethod
     def sampling_connection(logits = None, probs = None) :
         assert (logits is None) ^ (probs is None)

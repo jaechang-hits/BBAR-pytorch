@@ -134,7 +134,10 @@ class FCP(nn.Module) :
         return valid, fid, idx
 
     def get_cond (self, target: Dict[str, float]) :
-        assert target.keys() == self.cond_scale.keys()
+        assert target.keys() == self.cond_scale.keys(), \
+            f"Input Keys is not valid\n" \
+            f"\tInput:      {set(target.keys()) if len(target.keys()) else '{}'}\n" \
+            f"\tRequired:   {set(self.cond_scale.keys())}"
         ret = []
         for desc, std_var in self.cond_scale.items() :
             ret.append (self.standardize(target[desc], std_var))
