@@ -1,0 +1,65 @@
+
+# App name, override to match the name your app is known by
+app_name: Sampling
+
+# Help header, customize to describe your app to your users
+header: == ${hydra.help.app_name} ==
+
+footer: |-
+  Powered by Hydra (https://hydra.cc)
+  Use --hydra-help to view Hydra specific help
+
+template: |-
+  ${hydra.help.header}
+  
+  == Config ==
+  # Sampled SMILES list is saved at the file {exp_dir}/{name}.smi or {exp_dir}/{name}.csv depending on save_property.
+  name: Result file name
+  exp_dir: Directory path where the result file will be saved.
+
+  data_dir: Directory path with the library file 'library.csv'
+  model_path: Model checkpoint file path
+  gpus: If gpus=1, use cuda. Else(gpus=0), use cpu.
+
+  condition: For conditional sampling, add target value. (See Running Example)
+
+  # If both start_mol and start_mol_path are None(null), then non-scaffold sampling is start.
+  start_mol: Scaffold SMILES
+  start_mol_path: File path containing scaffold SMILES list
+  n_sample: Number of sampling per scaffold.
+
+  save_property: When it is True, if the condition descriptor is in 'rdkit.Chem.Descriptors', property value of sampled molecule is saved together. Also, the save file format is '.csv'.
+
+  generator:
+    model_path: Same to {model_path}
+    library_path: Same to {data_dir}/library.csv. With the library file which is not 'library.csv', enter the file name on this parameter.
+    n_library_sample: The number of library fragments to use in each step of sampling.
+    alpha: At each step of sampling, module extracts {n_library_samples} samples according to frequency from the library. The frequency is powered to {alpha}.
+    update_gv_lib: For fast sampling execution, the model store graph vectors for all fragments in library at checkpoints during training. Set to True if you are using a library not used in training.
+    target: Same to {condition}.
+    batch_size: Batch computation is supported for GPU acceleration.
+    num_workers: Num workers.
+
+    # Parameters for a specific experiment in our paper. Using default setting is recommended.
+    idx_maksing: True
+    compose_force: False
+
+  # Config for {save_property}.
+  formatter:
+    ...
+
+  == Running Example ==
+  You can override everything, for example:
+  python sample.py \
+      gpus=1 \
+      name='logp\=4-tpsa\=60' \
+      exp_dir='result/sample/molport/logp-tpsa' \
+      data_dir='data/molport' \
+      model_path='result/model/molport/logp-tpsa/save9.tar' \
+      start_mol_path='data/start_list/start100.smi' \
+      n_sample=100 \
+      save_property=true \
+      +condition.MolLogP=4 \
+      +condition.TPSA=60
+
+  ${hydra.help.footer}

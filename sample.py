@@ -11,24 +11,28 @@ from src.generator import MoleculeBuilder
 @hydra_runner(config_path='conf', config_name='sample')
 def main(cfg) : 
     common.set_seed(0)
-    cfg, logger = sample_manager(cfg, cfg.save_dir)
+    cfg, logger = sample_manager(cfg, cfg.exp_dir)
     mb_cfg = cfg.generator
     device = common.set_device(cfg.gpus)
 
-    mb = MoleculeBuilder(mb_cfg, device, None)
-    if cfg.start_frag_path is not None :
-        start_frag_list = common.load_txt(cfg.start_frag_path)
+    assert cfg.start_mol is None or cfg.start_mol_path is None
+    if cfg.start_mol is not None :
+        start_list = [cfg.start_mol]
+    elif cfg.start_mol_path is not None :
+        start_list = common.load_txt(cfg.start_mol_path)
     else :
-        start_frag_list = [None]
-    total_n_sample = cfg.n_sample * len(start_frag_list)
+        start_list = [None]
+    total_n_sample = cfg.n_sample * len(start_list)
     total_sample_list = []
     total_step = 0
+
+    mb = MoleculeBuilder(mb_cfg, device, None)
 
     st = time.time()
     validity = []
     uniqueness = []
-    for i, start_frag in enumerate(start_frag_list) :
-        sample_list, n_step = mb.generate(start_frag, n_sample = cfg.n_sample)
+    for i, start_mol in enumerate(start_list) :
+        sample_list, n_step = mb.generate(start_mol, n_sample = cfg.n_sample)
         validity.append(len(sample_list) / cfg.n_sample)
         if len(sample_list) > 0 :
             uniqueness.append(len(set(sample_list)) / len(sample_list))

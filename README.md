@@ -156,7 +156,26 @@ python train.py \
 ```
 
 
-
 ## Generating
+
+```shell
+python sample.py --help
+```
+
+Example running script.
+
+```shell
+python sample.py \
+    gpus=1 \
+    name='logp\=4-tpsa\=60' \
+    exp_dir='result/sample/molport/logp-tpsa' \
+    data_dir='data/molport' \
+    model_path='result/model/molport/logp-tpsa/save9.tar' \
+    start_mol_path='data/start_list/start100.smi' \
+    n_sample=100 \
+    save_property=true \
+    +condition.MolLogP=4 \
+    +condition.TPSA=60
+```
 
 

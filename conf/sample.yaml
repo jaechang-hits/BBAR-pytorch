@@ -1,30 +1,36 @@
+defaults:
+  - _self_
+  - override hydra/help: sample_help
+
 name: debug
-save_dir: sample/
+exp_dir: sample/
 data_dir: data/molport/
 model_path: <model>
 gpus: 1
 
 condition: {}
+
+start_mol: null
+start_mol_path: null
 n_sample: 100
 
-start_frag_path: null
 save_property: True
 
 generator:
-    model_path: ${model_path}
-    library_path: ${data_dir}/library.csv
-    n_library_sample: 2000
-    alpha: 0.75
-    update_gv_lib: False
-    target: ${condition}
-    batch_size: 512
-    num_workers: 0
-    idx_masking: True
-    compose_force: False
+  model_path: ${model_path}
+  library_path: ${data_dir}/library.csv
+  n_library_sample: 2000
+  alpha: 0.75
+  update_gv_lib: False
+  target: ${condition}
+  batch_size: 512
+  num_workers: 0
+  idx_masking: True
+  compose_force: False
 
 formatter:
-    ExactMolwt: '.2f'
-    MolLogP: '.4f'
-    TPSA: '.2f'
-    qed: '.3f'
+  ExactMolwt: '.2f'
+  MolLogP: '.4f'
+  TPSA: '.2f'
+  qed: '.3f'
 
