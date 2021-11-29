@@ -112,7 +112,7 @@ def get_library_feature(library: BRICSLibrary = None,
 
         v = torch.stack(v)
         adj = torch.stack(adj)
-        freq = library.freq.to_numpy()
+        freq = library.freq
         np.savez(library_feature_path, h=v.numpy(), adj=adj.numpy().astype('?'), \
                  freq=freq)
         v = v.float().to(device)

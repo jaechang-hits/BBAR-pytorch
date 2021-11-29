@@ -16,7 +16,10 @@ class BRICSLibrary() :
 
         library = pd.read_csv(library_file)
         self.smiles = library.SMILES
-        self.freq = library.frequency
+        try :
+            self.freq = library.frequency.to_numpy()
+        except :
+            self.freq = np.full((len(self.smiles),), 1/len(self.smiles))
 
         if save_mol :
             self._mol = [Chem.MolFromSmiles(s) for s in self.smiles]

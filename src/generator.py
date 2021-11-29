@@ -23,7 +23,7 @@ class MoleculeBuilder() :
         self.model.eval()
 
         self.library = brics.BRICSLibrary(cfg.library_path, save_mol = True)
-        library_freq = torch.from_numpy(self.library.freq.to_numpy()).to(self.device) ** cfg.alpha
+        library_freq = torch.from_numpy(self.library.freq).to(self.device) ** cfg.alpha
         self.library_freq = library_freq / library_freq.sum()
         self.lib_size = len(self.library)
         self.n_lib_sample = min(self.lib_size, cfg.n_library_sample)
@@ -155,30 +155,35 @@ class MoleculeBuilder() :
     def __call__(
         self,
         scaffold: Optional[str],
+        log: bool = True
         ) :
-        def print_log(state, log, scaffold, smiles, step, start_time) :
-            end_time = time.time()
-            print(f"\n{state}\t({log})\n"
-                  f"\tstart  \t{scaffold}\n"
-                  f"\tlast   \t{smiles}\n"
-                  f"\tstep   \t{step}\n"
-                  f"\ttime   \t{end_time - start_time:.2f}\n"
-            )
+        def print_log(state, _log, scaffold, smiles, step, start_time) :
+            if log :
+                end_time = time.time()
+                print(f"\n{state}\t({_log})\n"
+                      f"\tstart  \t{scaffold}\n"
+                      f"\tlast   \t{smiles}\n"
+                      f"\tstep   \t{step}\n"
+                      f"\ttime   \t{end_time - start_time:.2f}\n"
+                )
 
         step = 0
 
         if scaffold is not None :
-            print(f"Start\n\t{scaffold}")
+            if log :
+                print(f"Start\n\t{scaffold}")
             smiles1 = scaffold
         if scaffold is None :
-            print(f"Start\n\t''")
+            if log :
+                print(f"Start\n\t''")
             step += 1
             idxs = list(range(len(self.library)))
             draw = int(np.random.choice(idxs, 1, p=self.library_freq.to('cpu').numpy()))
             select_frag = self.library[draw]
             smiles1 = brics.preprocess.remove_brics_label(select_frag)
-            print(f"Step {step}: random select from library (fid={draw})\n"
-                  f"\t{smiles1}")
+            if log :
+                print(f"Step {step}: random select from library (fid={draw})\n"
+                      f"\t{smiles1}")
 
         start_time = time.time()
         while True :
@@ -254,8 +259,9 @@ class MoleculeBuilder() :
             if Chem.MolFromSmiles(compose_smiles) :
                 step += 1 
                 smiles1 = compose_smiles
-                print(f"Step {step}: Add {frag2} ({fid2}) at index {cxn_idx}\n"
-                      f"\t{smiles1}")
+                if log :
+                    print(f"Step {step}: Add {frag2} ({fid2}) at index {cxn_idx}\n"
+                          f"\t{smiles1}")
 
         return result_list, total_step
     @staticmethod
@@ -303,7 +309,7 @@ class MoleculeBuilder() :
             v = torch.stack(v)
             adj = torch.stack(adj)
             np.savez(library_feature_path, h=v.numpy(), adj=adj.numpy().astype('?'), \
-                     freq=self.library.freq.to_numpy())
+                     freq=self.library.freq)
             v = v.float().to(self.device)
             adj = adj.bool().to(self.device)
             
