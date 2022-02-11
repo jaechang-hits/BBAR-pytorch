@@ -15,7 +15,7 @@ class NS_Trainer(nn.Module) :
         self.model = model
         self.n_sample = n_sample
         h, adj, freq = get_library_feature(library_path = library_file, device = device)
-        self.library_h, self.library_adj, self.library_freq = h, adj, freq
+        self.library_h, self.library_adj, self.library_freq = h, adj, freq ** alpha
         self.lib_size = self.library_h.size(0)
         self.lib_node_size = self.library_h.size(1)
         self.library_h.requires_grad_(False)
