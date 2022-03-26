@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from collections import namedtuple, OrderedDict
-from typing import List, Tuple
+from typing import List, Tuple, Union
 import gc
 
 Scale = namedtuple('Scale', ('mean', 'std'))
@@ -28,5 +28,5 @@ class Cond_Module () :
         del(db)
         gc.collect()
 
-    def __getitem__(self, molID: int) -> Tuple[float] :
+    def __getitem__(self, molID: Union[str, int]) -> Tuple[float] :
         return self.db[molID]

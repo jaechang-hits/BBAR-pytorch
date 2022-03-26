@@ -5,7 +5,12 @@ from omegaconf import OmegaConf
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 import pandas as pd
-desc_dic = Descriptors.__dict__
+import copy
+
+from .sascorer import sa_scorer
+
+desc_dic = copy.copy(Descriptors.__dict__)
+desc_dic['SA_score'] = sa_scorer
 desc_key = desc_dic.keys()
 
 def train_manager(cfg, exp_dir='result') :
