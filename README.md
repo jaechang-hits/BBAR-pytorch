@@ -2,10 +2,6 @@
 
 Official github of *Improvement of generating molecules with rare targetproperty values using a molecular fragment-based deepgenerative model without restriction in chemical space* by Seonghwan Seo, Jaechang Lim, Woo Youn Kim.
 
-#### Pytorch-lightning version
-In this repository, there will be no updates except documents. Instead, we provide pytorch-lightning version, repository for development. If you would like to request or suggest additional functions, please use following link.
-- https://github.com/SeonghwanSeo/FMGM.git
-
 ## Table of Contents
 
 - [Environment](#environment)
