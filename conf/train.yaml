@@ -1,5 +1,5 @@
 name: debug
-data_dir: data/molport
+data_dir: data/molport_
 exp_dir: result
 timezone: null
 

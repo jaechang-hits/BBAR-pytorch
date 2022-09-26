@@ -1,0 +1,11 @@
+# Required
+generator_config: conf/generator/docking.yaml
+
+# Scaffold-based Generation
+scaffold: null
+
+# Optional
+output_path: null
+num_samples: 5
+seed: 0
+verbose: True

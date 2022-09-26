@@ -25,7 +25,7 @@ def compose(
     frag2: Union[str, Mol],
     idx1: int,
     idx2: int,
-    returnMols: bool = False,
+    returnMol: bool = False,
     returnBricsType: bool = False,
     force: bool = False,
     warning: bool = False,
@@ -71,14 +71,16 @@ def compose(
     edit_mol.RemoveAtom(num_atoms1 + idx2)
     edit_mol.ReplaceAtom(idx1, atom1)
     combined_mol = edit_mol.GetMol()
-    retval = Chem.MolToSmiles(combined_mol)
 
-    if returnMols :
-        retval = Chem.MolFromSmiles(combined_smiles)
-    if returnBricsType :
-        return retval, (bricsidx1, bricsidx2)
+    if returnMol :
+        Chem.SanitizeMol(combined_mol)
     else :
-        return retval
+        combined_mol = Chem.MolToSmiles(combined_mol)
+
+    if returnBricsType :
+        return combined_mol, (bricsidx1, bricsidx2)
+    else :
+        return combined_mol
 
 buildTemplate= []
 buildReaction = []

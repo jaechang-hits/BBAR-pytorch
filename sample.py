@@ -1,58 +1,64 @@
+from rdkit import Chem
+
 import numpy as np
 import logging
 import time
+from omegaconf import OmegaConf
 
 from utils import common
-from utils.hydra_runner import hydra_runner
-from utils.exp_manager import sample_manager
+from utils.argparser import Generation_ArgParser
 
 from src.generator import MoleculeBuilder
 
-@hydra_runner(config_path='conf', config_name='sample')
-def main(cfg) : 
-    common.set_seed(0)
-    cfg, logger = sample_manager(cfg, cfg.exp_dir)
-    mb_cfg = cfg.generator
-    device = common.set_device(cfg.gpus)
+def setup_generator() :
+    # Parsing
+    parser = Generation_ArgParser()
+    args, remain_args = parser.parse_known_args()
 
-    assert cfg.start_mol is None or cfg.start_mol_path is None
-    if cfg.start_mol is not None :
-        start_list = [cfg.start_mol]
-    elif cfg.start_mol_path is not None :
-        start_list = common.load_txt(cfg.start_mol_path)
+    generator_cfg = OmegaConf.load(args.generator_config)
+    generator = MoleculeBuilder(generator_cfg, None)
+
+    # Second Parsing To Read Condition
+    if len(generator.target_properties) > 0 :
+        for property_name in generator.target_properties :
+            parser.add_argument(f'--{property_name}', type = float, required=True)
+    args = parser.parse_args()
+    condition = {property_name: args.__dict__[property_name] for property_name in generator.target_properties}
+    generator.setup(condition)
+
+    return generator, args
+
+def main() : 
+    generator, args = setup_generator()
+
+    if args.scaffold is not None :
+        start_mol = Chem.MolFromSmiles(args.scaffold)
     else :
-        start_list = [None]
-    total_n_sample = cfg.n_sample * len(start_list)
-    total_sample_list = []
-    total_step = 0
+        start_mol = None
 
-    mb = MoleculeBuilder(mb_cfg, device, None)
+    if args.output_path not in [None, 'null'] :
+        output_path = args.output_path
+    else :
+        output_path = '/dev/null'
+    w = open(output_path, 'w')
 
     st = time.time()
-    validity = []
-    uniqueness = []
-    for i, start_mol in enumerate(start_list) :
-        sample_list, n_step = mb.generate(start_mol, n_sample = cfg.n_sample)
-        validity.append(len(sample_list) / cfg.n_sample)
-        if len(sample_list) > 0 :
-            uniqueness.append(len(set(sample_list)) / len(sample_list))
-        total_step += n_step
-        logger.log(sample_list)
+    common.set_seed(args.seed)
+    for i in range(args.num_samples) :
+        print(f"{i}th Generation...")
+        generated_mol = generator.generate(start_mol, args.verbose)
+        if generated_mol is None :
+            continue
+        smiles = Chem.MolToSmiles(generated_mol)
+        if smiles is not None :
+            print(f"Finish\t{smiles}\n")
+            w.write(smiles+'\n')
+        else :
+            print("FAIL\n")
+
+    w.close()
     end = time.time()
-
-    avg_validity = np.mean(np.array(validity))*100
-
-    try :
-        avg_uniqueness = np.mean(np.array(uniqueness))*100
-    except :
-        avg_uniqueness = np.NAN
-
-    avg_step = total_step / total_n_sample
-    logging.info(f'validity: {avg_validity:.1f}\t'
-                 f'uniqueness: {avg_uniqueness:.1f}\t'
-                 f'num step: {avg_step:.2f}\t'
-                 f'time: {(end-st)/total_n_sample:.5f}\t'
-                 f'total time: {(end-st):.5f}')
+    print(end-st, (end-st)/args.num_samples)
 
 if __name__ == '__main__' :
     main()

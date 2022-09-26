@@ -1,0 +1,11 @@
+model_path: <MODEL_PATH>
+target_properties: []
+
+library_path: <LIBRARY_PATH>
+update_gv_lib: false  # set true when library is not used in training
+
+n_library_sample: 2000
+alpha: 0.75
+max_iteration: 10
+idx_masking: True
+compose_force: False

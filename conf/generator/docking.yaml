@@ -1,0 +1,9 @@
+model_path: /home/shwan/WORK/FINISH/FMGM-pytorch/result/model/docking/docking/save.tar
+library_path: /home/shwan/WORK/FINISH/FMGM-pytorch/data/molport/library.csv
+update_gv_lib: false  # set true when library is not used in training
+
+n_library_sample: 2000
+alpha: 0.75
+max_iteration: 10
+idx_masking: True
+compose_force: False

@@ -3,7 +3,7 @@ from rdkit.Chem import Mol
 from typing import Union, List, Tuple, Optional, Dict
 import re
 
-def remove_brics_label(mol: Union[str, Mol], idx: Optional[int] = None, returnMols: bool = False) \
+def remove_brics_label(mol: Union[str, Mol], idx: Optional[int] = None, returnMol: bool = False) \
                                 -> Tuple[Union[str, Mol], Optional[int]] :
     if isinstance(mol, Mol) :
         smi = Chem.MolToSmiles(mol)
@@ -24,11 +24,11 @@ def remove_brics_label(mol: Union[str, Mol], idx: Optional[int] = None, returnMo
             if (idx2 == idx) :
                 idx = idx1
                 break
-        if returnMols:
+        if returnMol:
             return new_mol, idx
         else :
             return new_smi, idx
-    if returnMols:
+    if returnMol:
         return new_mol
     else :
         return new_smi

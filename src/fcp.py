@@ -13,9 +13,11 @@ class FCP(nn.Module) :
         self._cfg = cfg
         if cond_scale is not None :
             self.cond_scale = cond_scale
+            self.cond_keys = list(cond_scale.keys())
             self.cond_size = len(self.cond_scale)
         else :
             self.cond_scale = {}
+            self.cond_keys = []
             self.cond_size = 0
 
         self.gv_lib = None
@@ -136,7 +138,7 @@ class FCP(nn.Module) :
     def get_cond (self, target: Dict[str, float]) :
         assert target.keys() == self.cond_scale.keys(), \
             f"Input Keys is not valid\n" \
-            f"\tInput:      {set(target.keys()) if len(target.keys()) else '{}'}\n" \
+            f"\tInput:      {set(target.keys()) if len(target)>0 else '{}'}\n" \
             f"\tRequired:   {set(self.cond_scale.keys())}"
         ret = []
         for desc, std_var in self.cond_scale.items() :
