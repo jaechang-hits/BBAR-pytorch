@@ -33,6 +33,7 @@ def compose(
     
     if isinstance(frag1, str) :
         frag1 = Chem.MolFromSmiles(frag1)
+
     if isinstance(frag2, str) :
         frag2 = Chem.MolFromSmiles(frag2)
 
@@ -55,8 +56,6 @@ def compose(
         if warning: print(f"ERROR: frag1's {idx1}th atom '{atom1.GetSymbol()}' couldn't be connected with frag2.")
         if not force: return None
 
-    atom1.SetNoImplicit(False)
-    atom1.SetNumExplicitHs(0)
     
     # Combine Molecules
     num_atoms1 = frag1.GetNumAtoms()
@@ -65,6 +64,11 @@ def compose(
     
     starting_mol = Chem.CombineMols(frag1, frag2)
     edit_mol = Chem.EditableMol(starting_mol)
+
+    atom1 = starting_mol.GetAtomWithIdx(idx1)
+    atom1.SetNoImplicit(False)
+    atom1.SetNumExplicitHs(0)
+
     edit_mol.AddBond(idx1,
                      num_atoms1 + neigh_atom_idx2,
                      order = bt)
