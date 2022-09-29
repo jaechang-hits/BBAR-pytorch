@@ -33,6 +33,8 @@ class MoleculeBuilder() :
                 self.model.save_gv_lib(gv_lib)
 
         self.max_iteration = cfg.max_iteration
+        self.max_try = cfg.max_try
+
         if filter_fn :
             self.filter_fn = filter_fn
         else :
@@ -95,45 +97,50 @@ class MoleculeBuilder() :
             if not valid :
                 self.print_log(verbose, 'FAIL', step, mol, 'NO_APPROPRIATE_FRAGMENT')
                 return None
+
+            success_connect = False
+            for _ in range(self.max_try) :
+                idx = Categorical(probs = prob_dist_fragment).sample().item()
+                if use_lib is None :
+                    fragment_idx = idx
+                else :
+                    fragment_idx = use_lib[0, idx].item()
+                fragment = self.library.get_mol(fragment_idx)
+                
+                # Predict Index
+                gv2 = self.model.gv_lib[fragment_idx].unsqueeze(0)
+                prob_dist_idx = self.model.predict_idx(h1, adj1, _h1, gv1, gv2, self.cond, probs=True).squeeze(0)
+                                                                                                        # (N_atom)
+
+                # Predict Index
+                # Masking
+                if self.cfg.idx_masking :
+                    prob_dist_idx.masked_fill_(self.get_idx_mask(mol, fragment), 0)
+                    valid = (torch.sum(prob_dist_idx).item() > 0)
+                    if not valid :
+                        continue
+                # Sampling
+                atom_idx = Categorical(probs = prob_dist_idx).sample().item()
+
+                # compose fragments
+                try :
+                    composed_mol = brics.BRICSCompose.compose(mol, fragment, atom_idx, 0, 
+                                                        returnMol=True, force=self.cfg.compose_force)
+                    if composed_mol is None or not(self.filter_fn(composed_mol)):
+                        continue
+                    else :
+                        success_connect = True
+                        break
+                except Exception as e:
+                    continue
             
-            idx = Categorical(probs = prob_dist_fragment).sample().item()
-            if use_lib is None :
-                fragment_idx = idx
+            if success_connect :
+                mol = composed_mol
+                self.print_log(verbose, 'ADD', step, mol, fragment=fragment, fragment_idx=fragment_idx, atom_idx=atom_idx)
+                step += 1
             else :
-                fragment_idx = use_lib[0, idx].item()
-            fragment = self.library.get_mol(fragment_idx)
-            
-            # Predict Index
-            gv2 = self.model.gv_lib[fragment_idx].unsqueeze(0)
-            prob_dist_idx = self.model.predict_idx(h1, adj1, _h1, gv1, gv2, self.cond, probs=True).squeeze(0)
-                                                                                                    # (N_atom)
-
-            # Predict Index
-            # Masking
-            if self.cfg.idx_masking :
-                prob_dist_idx.masked_fill_(self.get_idx_mask(mol, fragment), 0)
-                valid = (torch.sum(prob_dist_idx).item() > 0)
-                if not valid :
-                    self.print_log(verbose, 'FAIL', step, mol, 'NO_APPROPRIATE_CONNECTION_INDEX')
-                    return None
-            # Sampling
-            atom_idx = Categorical(probs = prob_dist_idx).sample().item()
-
-            # compose fragments
-            try :
-                composed_mol = brics.BRICSCompose.compose(mol, fragment, atom_idx, 0, 
-                                                    returnMol=True, force=self.cfg.compose_force)
-            except:
-                composed_mol = None
-
-            if composed_mol is None or not(self.filter_fn(composed_mol)):
-                self.print_log(verbose, 'FAIL', step, mol, log = 'FAIL_TO_COMPOSE')
+                self.print_log(verbose, 'FAIL', step, mol, log = 'FAIL_TO_CONNECT_FRAGMENT')
                 return None
-
-            mol = composed_mol
-            self.print_log(verbose, 'ADD', step, mol, fragment=fragment, fragment_idx=fragment_idx, atom_idx=atom_idx)
-            step += 1
-
         # Max Iteration Error
         return None
 
@@ -153,7 +160,7 @@ class MoleculeBuilder() :
             fragment_smi = Chem.MolToSmiles(kwargs['fragment'])
             fragment_idx = kwargs['fragment_idx']
             atom_idx = kwargs['atom_idx']
-            print(f"Step {step}: Add {fragment_idx} at index {atom_idx}\n"
+            print(f"Step {step}: Add '{fragment_smi}' ({fragment_idx}) at index {atom_idx}\n"
                   f"\t{mol_smi}"
             )
         elif state == 'FAIL' :

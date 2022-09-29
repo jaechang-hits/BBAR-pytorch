@@ -7,3 +7,4 @@ alpha: 0.75
 max_iteration: 10
 idx_masking: True
 compose_force: False
+max_try: 5
