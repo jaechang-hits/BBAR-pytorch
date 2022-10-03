@@ -1,6 +1,6 @@
 name: debug
-data_dir: data/molport_
-exp_dir: result
+data_dir: data/ZINC
+exp_dir: result_zinc
 timezone: null
 
 #Train

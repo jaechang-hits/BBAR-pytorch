@@ -61,9 +61,13 @@ def main() :
     for scaf_idx, scaffold_smi in enumerate(scaffold_list) :
         # Encoding Scaffold Molecule
         common.set_seed(args.seed)
-        scaffold_mol = Chem.MolFromSmiles(scaffold_smi)
-        print(f"[{scaf_idx+1}/{len(scaffold_list)}]")
-        print(f"Scaffold: {scaffold_smi}")
+        if scaffold_smi is not None :
+            scaffold_mol = Chem.MolFromSmiles(scaffold_smi)
+            print(f"[{scaf_idx+1}/{len(scaffold_list)}]")
+            print(f"Scaffold: {scaffold_smi}")
+        else :
+            print(f"Non-Scaffold Generation")
+            scaffold_mol = None
 
         local_st = time.time()
         success = 0
