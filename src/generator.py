@@ -73,7 +73,7 @@ class MoleculeBuilder() :
                 scaffold_smiles = Chem.MolToSmiles(scaffold)
                 print(f"Start\t'{scaffold_smiles}'")
 
-        mol = scaffold
+        mol = Chem.Mol(scaffold)
         while step < self.max_iteration :
             h1 = feature.get_atom_features(mol, brics=False).unsqueeze(0)
             adj1 = feature.get_adj(mol).unsqueeze(0)
@@ -105,7 +105,7 @@ class MoleculeBuilder() :
                     fragment_idx = idx
                 else :
                     fragment_idx = use_lib[0, idx].item()
-                fragment = self.library.get_mol(fragment_idx)
+                fragment = Chem.Mol(self.library.get_mol(fragment_idx))
                 
                 # Predict Index
                 gv2 = self.model.gv_lib[fragment_idx].unsqueeze(0)
