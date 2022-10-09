@@ -1,0 +1,24 @@
+# There are two option to load model.
+# First one is using just model weight file.
+# You need to write model path and library path. 
+#
+# Another is library-embeded model.
+# In this case, model already contains the library information, so generator skips vectoring the fragments of library.
+#
+# Recommendation is to enter all path.
+# If there is no library-embeded model file, generator creates it with model and library and save it to input path.
+# You can use the created library-embeded model file next time.
+
+# First Option
+model_path: <MODEL_PATH>
+library_path: <LIBRARY_PATH>
+
+# Second Option
+library_embeded_model_path: <LIBRARY_EMBEDED_MODEL_PATH>
+
+# Required
+n_library_sample: 2000
+alpha: 0.75
+max_iteration: 10
+idx_masking: True
+compose_force: False

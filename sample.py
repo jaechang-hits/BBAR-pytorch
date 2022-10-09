@@ -53,7 +53,6 @@ def main() :
     # Set Seed
     if args.seed is None :
         args.seed = random.randint(0, 1e6)
-    print(f"Seed: {args.seed}")
 
     # Start
     global_st = time.time()
@@ -72,10 +71,13 @@ def main() :
         local_st = time.time()
         success = 0
         for i in range(1, args.num_samples + 1) :
+            seed = args.seed + i - 1
             if not args.q :
-                print(f"{i}th Generation...")
+                print(f"{i}th Generation... (Seed {seed})")
+            common.set_seed(seed)
+            generated_mol = generator.generate(scaffold_mol, args.verbose)
             try :
-                generated_mol = generator.generate(scaffold_mol, args.verbose)
+                pass
             except KeyboardInterrupt :
                 raise KeyboardInterrupt
             except :
@@ -104,9 +106,11 @@ def main() :
 
     out_writer.close()
     global_end = time.time()
-    time_cost = global_end - global_st
-    print(f"Num Generated Mol: {global_success}") 
-    print(f"Total Time Cost: {time_cost:.3f}, {time_cost/args.num_samples/len(scaffold_list):.3f}")
+
+    if len(scaffold_list) > 1 :
+        time_cost = global_end - global_st
+        print(f"Num Generated Mol: {global_success}") 
+        print(f"Total Time Cost: {time_cost:.3f}, {time_cost/args.num_samples/len(scaffold_list):.3f}")
 
 if __name__ == '__main__' :
     main()

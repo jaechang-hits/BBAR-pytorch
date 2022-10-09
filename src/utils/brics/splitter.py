@@ -83,11 +83,11 @@ class BRICSSplitter() :
                   It is caused by a bug in the Chem.MolToSmiles() function of the RdKit module in some bridged molecules.")
                 return None
             self.frag_set.append(BRICSFragment(smiles, f_idx))
-            for label, atom_idx, brics_idx in idx_set :
+            for label, atom_idx, brics_label in idx_set :
                 if label in idx_pair :
-                    idx_pair[label].append((f_idx, atom_idx, brics_idx))
+                    idx_pair[label].append((f_idx, atom_idx, brics_label))
                 else :
-                    idx_pair[label] = [(f_idx, atom_idx, brics_idx)]
+                    idx_pair[label] = [(f_idx, atom_idx, brics_label)]
         for _, values in idx_pair.items() :
             if len(values)<2:
                 """
@@ -96,10 +96,10 @@ class BRICSSplitter() :
                 example input: '*COCc1ccccc1'
                 """
                 continue
-            f_idx1, atom_idx1, brics_idx1 = values[0]
-            f_idx2, atom_idx2, brics_idx2 = values[1]
-            self.frag_set[f_idx1].connection.append(((f_idx1, atom_idx1, brics_idx1), (f_idx2, atom_idx2, brics_idx2)))
-            self.frag_set[f_idx2].connection.append(((f_idx2, atom_idx2, brics_idx2), (f_idx1, atom_idx1, brics_idx1)))
+            f_idx1, atom_idx1, brics_label1 = values[0]
+            f_idx2, atom_idx2, brics_label2 = values[1]
+            self.frag_set[f_idx1].connection.append(((f_idx1, atom_idx1, brics_label1), (f_idx2, atom_idx2, brics_label2)))
+            self.frag_set[f_idx2].connection.append(((f_idx2, atom_idx2, brics_label2), (f_idx1, atom_idx1, brics_label1)))
 
     def __len__(self) :
         return len(self.frag_set)
@@ -155,10 +155,10 @@ def _remove_frag_label(frag: Union[str, Mol]) -> Tuple[str, List[Tuple[int, int,
         if atom.GetAtomicNum() == 0 :
             atom_idx = atom.GetIdx()
             isotope = atom.GetIsotope()
-            brics_idx = isotope % 100
+            brics_label = isotope % 100
             label = int(isotope // 100)
-            atom.SetIsotope(brics_idx)
-            idx_list.append((label, atom_idx, str(brics_idx)))
+            atom.SetIsotope(brics_label)
+            idx_list.append((label, atom_idx, str(brics_label)))
 
     convert_smiles = Chem.MolToSmiles(frag)
     convert_mol = Chem.MolFromSmiles(convert_smiles)
@@ -171,7 +171,7 @@ def _remove_frag_label(frag: Union[str, Mol]) -> Tuple[str, List[Tuple[int, int,
             return None, None
 
     for i in range(len(idx_list)) :
-        label, atom_idx, brics_idx = idx_list[i]
-        idx_list[i] = (label, idxmap[atom_idx], brics_idx)
+        label, atom_idx, brics_label = idx_list[i]
+        idx_list[i] = (label, idxmap[atom_idx], brics_label)
 
     return convert_smiles, idx_list      

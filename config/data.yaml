@@ -1,0 +1,8 @@
+data_dir: <DATA_DIR>
+property_path: ${data_dir}/property.db
+library_path: ${data_dir}/library.csv
+train_data_path: ${data_dir}/train.csv
+train_weight_path: ${data_dir}/train_weight.npy
+val_data_path: ${data_dir}/val.csv
+train_max_atoms: 50
+val_max_atoms: 50

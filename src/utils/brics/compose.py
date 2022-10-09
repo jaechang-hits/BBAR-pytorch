@@ -8,7 +8,7 @@ import re
 import pandas as pd
 import gc
 
-from .constant import BRICS_TYPE, BRICS_SMARTS_MOL, BRICS_SMARTS_FRAG
+from .constant import BRICS_ENV, BRICS_SMARTS_MOL, BRICS_SMARTS_FRAG
 
 p = re.compile('\[\d+\*\]')
 
@@ -21,59 +21,58 @@ We do not use linker for fragment
 BRICS_substructure = {k:Chem.MolFromSmarts(v[0]) for k, v in BRICS_SMARTS_MOL.items()}
 
 def compose(
-    frag1: Union[str, Mol],
-    frag2: Union[str, Mol],
-    idx1: int,
-    idx2: int,
+    mol: Union[str, Mol],
+    frag: Union[str, Mol],
+    atom_idx_mol: int,
+    atom_idx_frag: int,
     returnMol: bool = False,
     returnBricsType: bool = False,
     force: bool = False,
     warning: bool = False,
     ) -> Union[str, Mol, Tuple, None] :
     
-    if isinstance(frag1, str) :
-        frag1 = Chem.MolFromSmiles(frag1)
+    if isinstance(mol, str) :
+        mol = Chem.MolFromSmiles(mol)
+    else :
+        mol = Chem.Mol(mol)
 
-    if isinstance(frag2, str) :
-        frag2 = Chem.MolFromSmiles(frag2)
-
+    if isinstance(frag, str) :
+        frag = Chem.MolFromSmiles(frag)
+    else :
+        frag = Chem.Mol(frag)
     # Validity Check
-    atom1 = frag1.GetAtomWithIdx(idx1)
-    atom2 = frag2.GetAtomWithIdx(idx2)
-    if (atom2.GetAtomicNum() != 0):
-        if warning: print(f"ERROR: frag2's {idx2}th atom '{atom2.GetSymbol()}' should be [*].")
+    atom_mol = mol.GetAtomWithIdx(atom_idx_mol)
+    atom_frag = frag.GetAtomWithIdx(atom_idx_frag)
+    if (atom_frag.GetAtomicNum() != 0):
+        if warning: print(f"ERROR: frag's {atom_idx_frag}th atom '{atom_frag.GetSymbol()}' should be [*].")
         if not force: return None
-    bricsidx2 = str(atom2.GetIsotope())
+    brics_label_frag = str(atom_frag.GetIsotope())
 
     validity = False
-    for bricsidx1 in BRICS_TYPE[bricsidx2] :
-        substructure = BRICS_substructure[bricsidx1]
-        for idxs_list in frag1.GetSubstructMatches(substructure) :
-            if idx1 == idxs_list[0] :
+    for brics_label in BRICS_ENV[brics_label_frag] :
+        substructure = BRICS_substructure[brics_label]
+        for idxs_list in mol.GetSubstructMatches(substructure) :
+            if atom_idx_mol == idxs_list[0] :
                 validity = True
                 break
     if not validity :
-        if warning: print(f"ERROR: frag1's {idx1}th atom '{atom1.GetSymbol()}' couldn't be connected with frag2.")
+        if warning: print(f"ERROR: mol's {atom_idx_mol}th atom '{atom_mol.GetSymbol()}' couldn't be connected with frag.")
         if not force: return None
 
-    
     # Combine Molecules
-    num_atoms1 = frag1.GetNumAtoms()
-    neigh_atom_idx2 = atom2.GetNeighbors()[0].GetIdx()
-    bt = (Chem.rdchem.BondType.SINGLE if bricsidx2 != '7' else Chem.rdchem.BondType.DOUBLE)
-    
-    starting_mol = Chem.CombineMols(frag1, frag2)
-    edit_mol = Chem.EditableMol(starting_mol)
+    num_atoms_mol = mol.GetNumAtoms()
+    neigh_atom_idx_frag = atom_frag.GetNeighbors()[0].GetIdx()
+    bt = (Chem.rdchem.BondType.SINGLE if brics_label_frag != '7' else Chem.rdchem.BondType.DOUBLE)
 
-    atom1 = starting_mol.GetAtomWithIdx(idx1)
-    atom1.SetNoImplicit(False)
-    atom1.SetNumExplicitHs(0)
-
-    edit_mol.AddBond(idx1,
-                     num_atoms1 + neigh_atom_idx2,
+    edit_mol = Chem.RWMol(Chem.CombineMols(mol, frag))
+    atom_mol = edit_mol.GetAtomWithIdx(atom_idx_mol)
+    if atom_mol.GetTotalNumHs() == atom_mol.GetNumExplicitHs():
+        atom_mol.SetNumExplicitHs(atom_mol.GetNumExplicitHs()-1)
+    edit_mol.AddBond(atom_idx_mol,
+                     num_atoms_mol + neigh_atom_idx_frag,
                      order = bt)
-    edit_mol.RemoveAtom(num_atoms1 + idx2)
-    edit_mol.ReplaceAtom(idx1, atom1)
+    edit_mol.ReplaceAtom(atom_idx_mol, atom_mol)
+    edit_mol.RemoveAtom(num_atoms_mol + atom_idx_frag)   # Remove Dummy Atom
     combined_mol = edit_mol.GetMol()
 
     if returnMol :
@@ -82,13 +81,13 @@ def compose(
         combined_mol = Chem.MolToSmiles(combined_mol)
 
     if returnBricsType :
-        return combined_mol, (bricsidx1, bricsidx2)
+        return combined_mol, (brics_label_mol, brics_label_frag)
     else :
         return combined_mol
 
 buildTemplate= []
 buildReaction = []
-for typ1, typ2list in BRICS_TYPE.items() :
+for typ1, typ2list in BRICS_ENV.items() :
     for typ2 in typ2list :
         r1 = BRICS_SMARTS_MOL[typ1][0]
         r2, bond = BRICS_SMARTS_FRAG[typ2]
@@ -98,17 +97,17 @@ for typ1, typ2list in BRICS_TYPE.items() :
         buildTemplate.append(tmpl)
 buildReaction = [Reactions.ReactionFromSmarts(template) for template in buildTemplate]
 
-def all_possible_compose(frag1: Union[str, Mol],
-                         frag2: Union[str, Mol]) -> Union[str, None] :
+def all_possible_compose(mol: Union[str, Mol],
+                         frag: Union[str, Mol]) -> Union[str, None] :
     
-    if isinstance(frag1, str) :
-        frag1 = Chem.MolFromSmiles(frag1)
-    if isinstance(frag2, str) :
-        frag2 = Chem.MolFromSmiles(frag2)
+    if isinstance(mol, str) :
+        mol = Chem.MolFromSmiles(mol)
+    if isinstance(frag, str) :
+        frag = Chem.MolFromSmiles(frag)
     
     possible_list = []
     for rxn in buildReaction :
-        products = rxn.RunReactants((frag1, frag2))
+        products = rxn.RunReactants((mol, frag))
         for p in products :
             possible_list.append(Chem.MolToSmiles(p[0]))
         
@@ -123,90 +122,87 @@ def get_broken(frag: Union[str, Mol]) -> List[Tuple[int, str]] :
             broken_idx_list.append((atom.GetIdx(), str(atom.GetIsotope())))
     return broken_idx_list
 
-def get_possible_indexs(frag1: Union[str, Mol],
-                        frag2: Union[str, Mol, None] = None,
-                        bidx2: Optional[str] = None) -> List[Tuple[Tuple[int, str]]] :
+def get_possible_indexs(mol: Union[str, Mol],
+                        frag: Union[str, Mol, None] = None,
+                        brics_label_frag: Optional[str] = None) -> List[Tuple[Tuple[int, str]]] :
     """
     Get Indexs which can be connected to target brics type for target fragment
     Return List[Tuple(AtomIndex:int, BRICSIndex:str)]
     Example
     >>> s1 = 'Nc1c(C)cccc1C'
-    >>> get_possible_indexs(s1, bidx2 = '12')
+    >>> get_possible_indexs(s1, brics_label_frag = '12')
     [(0, '5')]
     >>> s2 = 'C(=O)CCNC=O'
     >>> s2_ = '[10*]N1C(=O)COC1=O'
-    >>> get_possible_indexs(s2, frag2 = s2_)
+    >>> get_possible_indexs(s2, frag = s2_)
     [(0, '1'), (5, '1'), (2, '8'), (3, '8')]
     """
-    assert (frag2 is None) or (bidx2 is None)
-    if isinstance(frag1, str) :
-        frag1 = Chem.MolFromSmiles(frag1)
-    if isinstance(frag2, str) :
-        frag2 = Chem.MolFromSmiles(frag2)
+    assert (frag is None) or (brics_label_frag is None)
+    if isinstance(mol, str) :
+        mol = Chem.MolFromSmiles(mol)
+    if isinstance(frag, str) :
+        frag = Chem.MolFromSmiles(frag)
 
-    if frag2 is not None :
-        bidx2 = str(frag2.GetAtomWithIdx(0).GetIsotope())
+    if frag is not None :
+        brics_label_frag = str(frag.GetAtomWithIdx(0).GetIsotope())
     
     idxs = []
-    if bidx2 is not None :
-        brics_list = BRICS_TYPE[bidx2]
+    if brics_label_frag is not None :
+        brics_list = BRICS_ENV[brics_label_frag]
     else :
-        brics_list = list(BRICS_TYPE.keys())
+        brics_list = list(BRICS_ENV.keys())
 
-    for bidx1 in brics_list :
-        substructure = BRICS_substructure[bidx1]
-        for idxs_list in frag1.GetSubstructMatches(substructure) :
-            aidx1 = idxs_list[0]
-            idxs.append((aidx1, bidx1))
+    for brics_label_mol in brics_list :
+        substructure = BRICS_substructure[brics_label_mol]
+        for idxs_list in mol.GetSubstructMatches(substructure) :
+            atom_idx_mol = idxs_list[0]
+            idxs.append((atom_idx_mol, brics_label_mol))
     return idxs
 
-def get_possible_brics(frag1: Union[str, Mol],
-                       idx: Optional[str] = None) -> List[Tuple[Tuple[int, str]]] :
-    """
-    """
-    if isinstance(frag1, str) :
-        frag1 = Chem.MolFromSmiles(frag1)
+def get_possible_brics_labels(mol: Union[str, Mol],
+                       atom_idx: Optional[str] = None) -> List[Tuple[Tuple[int, str]]] :
+    def fast_brics_search(atom: Atom) :
+        atomicnum = atom.GetAtomicNum()
+        aromatic = atom.GetIsAromatic()
+        if atomicnum == 6 :
+            if aromatic :
+                return ['14', '16']
+            else :
+                return ['1', '4', '6', '7', '8', '13', '15']
+        elif atomicnum == 7 :
+            if aromatic :
+                return ['9']
+            else :
+                return ['5', '10']
+        elif atomicnum == 8 : 
+            return ['3']
+        elif atomicnum == 16 :
+            return ['11', '12']
+        else :
+            return []
+    if isinstance(mol, str) :
+        mol = Chem.MolFromSmiles(mol)
     
-    idxs = []
-    if idx is not None :
-        brics_list = fast_brics_search(frag1.GetAtomWithIdx(idx))
+    labels = []
+    if atom_idx is not None :
+        brics_list = fast_brics_search(mol.GetAtomWithIdx(atom_idx))
     else :
-        brics_list = list(BRICS_TYPE.keys())
+        brics_list = list(BRICS_ENV.keys())
 
-    for bidx1 in brics_list :
-        substructure = BRICS_substructure[bidx1]
-        for idxs_list in frag1.GetSubstructMatches(substructure) :
-            aidx1 = idxs_list[0]
-            if idx is None or aidx1 == idx:
-                idxs.append(bidx1)
+    for brics_label in brics_list :
+        substructure = BRICS_substructure[brics_label]
+        for idxs_list in mol.GetSubstructMatches(substructure) :
+            __atom_idx = idxs_list[0]
+            if atom_idx is None or atom_idx == __atom_idx:
+                labels.append(brics_label)
                 break
 
-    return idxs
+    return labels
 
-def fast_brics_search(atom: Atom) :
-    atomicnum = atom.GetAtomicNum()
-    aromatic = atom.GetIsAromatic()
-    if atomicnum == 6 :
-        if aromatic :
-            return ['14', '16']
-        else :
-            return ['1', '4', '6', '7', '8', '13', '15']
-    elif atomicnum == 7 :
-        if aromatic :
-            return ['9']
-        else :
-            return ['5', '10']
-    elif atomicnum == 8 : 
-        return ['3']
-    elif atomicnum == 16 :
-        return ['11', '12']
-    else :
-        return []
-
-def get_possible_connections(frag1: Union[str, Mol],
-                             frag2: Union[str, Mol]) -> List[Tuple[Tuple[int, int], Tuple[str, str]]] :
+def get_possible_connections(mol: Union[str, Mol],
+                             frag: Union[str, Mol]) -> List[Tuple[Tuple[int, int], Tuple[str, str]]] :
     """
-    Get all possible connections between frag1(w/o *) and frag2(w/ *)
+    Get all possible connections between mol(w/o *) and frag(w/ *)
     Return List[Tuple(Tuple(AtomIndex1:int, AtomIndex2:int), Tuple(BRICSIndex1:str, BRICSIndex2:str))]
     Example
     >>> s1 = 'Nc1c(C)cccc1C'
@@ -214,14 +210,14 @@ def get_possible_connections(frag1: Union[str, Mol],
     >>> get_possible_connections(s1, s2)
     [((0, 0), ('5', '12'))]
     """
-    if isinstance(frag1, str) :
-        frag1 = Chem.MolFromSmiles(frag1)
-    if isinstance(frag2, str) :
-        frag2 = Chem.MolFromSmiles(frag2)
-    idx_set2 = get_broken(frag2)
+    if isinstance(mol, str) :
+        mol = Chem.MolFromSmiles(mol)
+    if isinstance(frag, str) :
+        frag = Chem.MolFromSmiles(frag)
+    idx_set2 = get_broken(frag)
     connections = []
-    for aidx2, bidx2 in idx_set2 :
-        for aidx1, bidx1 in get_possible_indexs(frag1, bidx2 = bidx2) :
-            connections.append(((aidx1, aidx2), (bidx1, bidx2)))
+    for atom_idx_frag, brics_label_frag in idx_set2 :
+        for atom_idx_mol, brics_label_mol in get_possible_indexs(mol, brics_label_frag = brics_label_frag) :
+            connections.append(((atom_idx_mol, atom_idx_frag), (brics_label_mol, brics_label_frag)))
     return connections
 

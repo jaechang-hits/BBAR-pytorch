@@ -1,0 +1,42 @@
+GraphEncodingModel_Mol:
+  node_hidden_size: 128
+  hidden_size: 128
+  n_layer: 4
+  dropout: 0.0
+Readout_Mol:
+  input_size: ${GraphEncodingModel_Mol.hidden_size}
+  hidden_size: 128
+  output_size: 128
+  dropout: 0.0
+GraphEncodingModel_Frag:
+  node_hidden_size: 128
+  hidden_size: 128
+  n_layer: 4
+  dropout: 0.0
+Readout_Frag:
+  input_size: ${GraphEncodingModel_Frag.hidden_size}
+  hidden_size: 128
+  output_size: 128
+  dropout: 0.0
+
+TerminationCheckModel:
+  input_size: ${Readout_Mol.output_size}
+  hidden_size: 128
+  dropout: 0.0
+
+FragmentSelectionModel:
+  input_size1: ${Readout_Mol.output_size}
+  input_size2: ${Readout_Frag.output_size}
+  hidden_size: 128
+  dropout: 0.0
+
+GraphEncodingModel_Pair:
+  node_input_size: ${GraphEncodingModel_Mol.hidden_size}
+  node_hidden_size: 128
+  hidden_size: 128
+  n_layer: 4
+  dropout: 0.0
+
+IndexSelectionModel:
+  hidden_size: 128
+  dropout: 0.0

@@ -19,7 +19,7 @@ others=-100
 ATOM_FEATURES = {
     'period': [0, 1, 2, 3, 4, 5],
     'group': [0, 1, 2, 3, 4, 5, 6, 7, 8],
-    'brics_idx': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+    'brics_label': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
     'degree': [0, 1, 2, 3, 4, 5, others],
     'valence' : [0, 1, 2, 3, 4, 5, 6, 7, 8, others],
     'formal_charge': [-1, -2, 1, 2, 0, others],
@@ -124,7 +124,7 @@ def get_library_feature(library: BRICSLibrary = None,
 def _atom_features(atom: Atom, brics: bool) -> List[Union[int, float]]:
     atomic_num = atom.GetAtomicNum()
     period, group = _get_periodic_feature(atomic_num)
-    brics_idx = atom.GetIsotope()
+    brics_label = atom.GetIsotope()
     degree = atom.GetTotalDegree()
     valence = atom.GetTotalValence()
     formal_charge = atom.GetFormalCharge()
@@ -145,7 +145,7 @@ def _atom_features(atom: Atom, brics: bool) -> List[Union[int, float]]:
                [mass * 0.01, en * 0.2] #scaled to ablut the same range as other features
 
     if brics :
-        features = features + _onek_encoding_unk(brics_idx, ATOM_FEATURES['brics_idx'])
+        features = features + _onek_encoding_unk(brics_label, ATOM_FEATURES['brics_label'])
 
     return features
                

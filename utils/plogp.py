@@ -2,7 +2,7 @@ from rdkit import Chem
 from rdkit import DataStructs
 from rdkit.Chem import AllChem
 from rdkit.Chem import Descriptors
-from .sascorer.sascorer import sa_scorer
+from .SA_Score.sascorer import sa_scorer
 import networkx as nx
 from tqdm import tqdm
 

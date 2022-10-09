@@ -1,29 +1,43 @@
 from rdkit import Chem
 import pandas as pd
 import numpy as np
-from typing import Union, List
+from typing import Union, List, Optional
 import gc
 import re
 
-from .constant import BRICS_TYPE_INT
 p = re.compile('\[\d+\*\]')
 
 class BRICSLibrary() : 
-    def __init__(self, library_file: str, save_mol: bool = False) :
+    def __init__(self, library_path: Optional[str] = None, smiles_list: Optional[List[str]] = None, freq_list: Optional[List[int]] = None, save_mol: bool = True) :
         self.smiles = None
         self._mol = None
         self.freq = None
 
-        library = pd.read_csv(library_file)
-        self.smiles = library.SMILES
+        if library_path is not None :
+            self.load_from_file(library_path)
+        else :
+            self.load_from_list(smiles_list, freq_list)
+
+        if save_mol :
+            self._mol = [Chem.MolFromSmiles(s) for s in self.smiles]
+
+        self._brics_labels = None
+    
+    def load_from_file(self, library_path) :
+        library = pd.read_csv(library_path)
+        self.smiles = library.SMILES.to_list()
         try :
             self.freq = library.frequency.to_numpy()
         except :
             self.freq = np.full((len(self.smiles),), 1/len(self.smiles))
 
-        if save_mol :
-            self._mol = [Chem.MolFromSmiles(s) for s in self.smiles]
-    
+    def load_from_list(self, smiles_list, freq_list) :
+        self.smiles = smiles_list
+        if freq_list is not None :
+            self.freq = np.array(freq_list)
+        else :
+            self.freq = np.full((len(self.smiles),), 1/len(self.smiles))
+
     def __getitem__(self, idx: Union[int, List[int]]) :
         return self.smiles[idx]
 
@@ -45,3 +59,13 @@ class BRICSLibrary() :
 
     def __len__(self) :
         return len(self.smiles)
+    
+    @property
+    def brics_label_list(self)  :
+        if self._brics_labels is None :
+            self._brics_labels = [self.__get_brics_label(mol) for mol in self.mol]
+        return self._brics_labels
+
+    @staticmethod
+    def __get_brics_label(mol) :
+        return str(mol.GetAtomWithIdx(0).GetIsotope())

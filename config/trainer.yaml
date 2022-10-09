@@ -1,0 +1,18 @@
+# Training Environment
+gpus: 1
+num_workers: 4
+
+# Hyperparameter for Model Training
+lr: 0.001
+train_batch_size: 128
+val_batch_size: 256
+
+# Hyperparameter for Negative Sampling
+num_negative_samples: 10
+alpha: 0.75
+
+# unit: step (batch)
+max_step: 500000
+log_interval: 5000
+val_interval: 10000
+save_interval: 10000
