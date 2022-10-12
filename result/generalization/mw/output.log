@@ -1,0 +1,188 @@
+[2022-10-09 21:24:25] Training Information
+Argument
+name:	mw
+exp_dir:	./result_new/generalization/
+property:	['mw']
+trainer_config:	./config/trainer.yaml
+model_config:	./config/model.yaml
+data_config:	./config/data/generalization.yaml
+config:	None
+
+Trainer Config
+gpus: 1
+num_workers: 4
+lr: 0.001
+train_batch_size: 128
+val_batch_size: 256
+num_negative_samples: 10
+alpha: 0.75
+max_step: 500000
+log_interval: 5000
+val_interval: 10000
+save_interval: 10000
+
+Data Config
+data_dir: ./data/generalization/
+property_path: ./data/generalization//property.db
+library_path: ./data/generalization//library.csv
+train_data_path: ./data/generalization//train.csv
+train_weight_path: ./data/generalization//train_weight.npy
+val_data_path: ./data/generalization//val.csv
+train_max_atoms: 40
+val_max_atoms: 40
+
+[2022-10-09 21:24:34] number of parameters : 439055
+[2022-10-09 21:24:37] num of train data: 3963991
+[2022-10-09 21:24:37] num of val data: 440910
+
+[2022-10-09 21:24:37] Train Start
+[2022-10-09 21:36:21] STEP 5000	TRAIN	loss: 1.663	tloss: 0.001	ploss: 0.397	nloss: 0.439	iloss: 0.826	
+[2022-10-09 21:47:39] STEP 10000	TRAIN	loss: 1.256	tloss: 0.000	ploss: 0.308	nloss: 0.363	iloss: 0.586	
+[2022-10-09 21:48:29] STEP 10000	VAL  	loss: 1.495	tloss: 0.000	ploss: 0.490	nloss: 0.403	iloss: 0.602	
+[2022-10-09 21:59:48] STEP 15000	TRAIN	loss: 1.138	tloss: 0.000	ploss: 0.284	nloss: 0.336	iloss: 0.518	
+[2022-10-09 22:11:09] STEP 20000	TRAIN	loss: 1.070	tloss: 0.000	ploss: 0.269	nloss: 0.322	iloss: 0.479	
+[2022-10-09 22:11:58] STEP 20000	VAL  	loss: 1.475	tloss: 0.000	ploss: 0.532	nloss: 0.365	iloss: 0.578	
+[2022-10-09 22:23:10] STEP 25000	TRAIN	loss: 1.025	tloss: 0.000	ploss: 0.261	nloss: 0.313	iloss: 0.450	
+[2022-10-09 22:34:29] STEP 30000	TRAIN	loss: 0.990	tloss: 0.000	ploss: 0.253	nloss: 0.305	iloss: 0.431	
+[2022-10-09 22:35:18] STEP 30000	VAL  	loss: 1.403	tloss: 0.000	ploss: 0.447	nloss: 0.395	iloss: 0.562	
+[2022-10-09 22:46:36] STEP 35000	TRAIN	loss: 0.960	tloss: 0.000	ploss: 0.248	nloss: 0.299	iloss: 0.413	
+[2022-10-09 22:57:54] STEP 40000	TRAIN	loss: 0.935	tloss: 0.000	ploss: 0.242	nloss: 0.294	iloss: 0.399	
+[2022-10-09 22:58:44] STEP 40000	VAL  	loss: 1.391	tloss: 0.000	ploss: 0.432	nloss: 0.412	iloss: 0.547	
+[2022-10-09 23:10:01] STEP 45000	TRAIN	loss: 0.910	tloss: 0.000	ploss: 0.235	nloss: 0.287	iloss: 0.388	
+[2022-10-09 23:21:21] STEP 50000	TRAIN	loss: 0.894	tloss: 0.000	ploss: 0.231	nloss: 0.283	iloss: 0.380	
+[2022-10-09 23:22:09] STEP 50000	VAL  	loss: 1.377	tloss: 0.000	ploss: 0.418	nloss: 0.416	iloss: 0.543	
+[2022-10-09 23:33:22] STEP 55000	TRAIN	loss: 0.880	tloss: 0.000	ploss: 0.228	nloss: 0.280	iloss: 0.372	
+[2022-10-09 23:44:39] STEP 60000	TRAIN	loss: 0.862	tloss: 0.000	ploss: 0.223	nloss: 0.276	iloss: 0.363	
+[2022-10-09 23:45:32] STEP 60000	VAL  	loss: 1.439	tloss: 0.000	ploss: 0.488	nloss: 0.410	iloss: 0.541	
+[2022-10-09 23:56:49] STEP 65000	TRAIN	loss: 0.850	tloss: 0.000	ploss: 0.220	nloss: 0.274	iloss: 0.357	
+[2022-10-10 00:08:08] STEP 70000	TRAIN	loss: 0.841	tloss: 0.000	ploss: 0.218	nloss: 0.271	iloss: 0.352	
+[2022-10-10 00:08:59] STEP 70000	VAL  	loss: 1.366	tloss: 0.000	ploss: 0.439	nloss: 0.391	iloss: 0.537	
+[2022-10-10 00:20:10] STEP 75000	TRAIN	loss: 0.831	tloss: 0.000	ploss: 0.215	nloss: 0.269	iloss: 0.347	
+[2022-10-10 00:31:25] STEP 80000	TRAIN	loss: 0.823	tloss: 0.000	ploss: 0.214	nloss: 0.267	iloss: 0.343	
+[2022-10-10 00:32:16] STEP 80000	VAL  	loss: 1.380	tloss: 0.000	ploss: 0.462	nloss: 0.377	iloss: 0.542	
+[2022-10-10 00:43:31] STEP 85000	TRAIN	loss: 0.813	tloss: 0.000	ploss: 0.211	nloss: 0.265	iloss: 0.337	
+[2022-10-10 00:54:49] STEP 90000	TRAIN	loss: 0.805	tloss: 0.000	ploss: 0.209	nloss: 0.264	iloss: 0.332	
+[2022-10-10 00:55:41] STEP 90000	VAL  	loss: 1.372	tloss: 0.000	ploss: 0.491	nloss: 0.343	iloss: 0.538	
+[2022-10-10 01:07:00] STEP 95000	TRAIN	loss: 0.796	tloss: 0.000	ploss: 0.207	nloss: 0.261	iloss: 0.329	
+[2022-10-10 01:18:19] STEP 100000	TRAIN	loss: 0.791	tloss: 0.000	ploss: 0.207	nloss: 0.260	iloss: 0.323	
+[2022-10-10 01:19:11] STEP 100000	VAL  	loss: 1.362	tloss: 0.000	ploss: 0.380	nloss: 0.437	iloss: 0.545	
+[2022-10-10 01:30:32] STEP 105000	TRAIN	loss: 0.782	tloss: 0.000	ploss: 0.204	nloss: 0.259	iloss: 0.320	
+[2022-10-10 01:41:50] STEP 110000	TRAIN	loss: 0.781	tloss: 0.000	ploss: 0.205	nloss: 0.259	iloss: 0.317	
+[2022-10-10 01:42:41] STEP 110000	VAL  	loss: 1.337	tloss: 0.000	ploss: 0.315	nloss: 0.498	iloss: 0.524	
+[2022-10-10 01:53:59] STEP 115000	TRAIN	loss: 0.769	tloss: 0.000	ploss: 0.201	nloss: 0.256	iloss: 0.312	
+[2022-10-10 02:05:14] STEP 120000	TRAIN	loss: 0.767	tloss: 0.000	ploss: 0.200	nloss: 0.255	iloss: 0.311	
+[2022-10-10 02:06:04] STEP 120000	VAL  	loss: 1.359	tloss: 0.000	ploss: 0.416	nloss: 0.409	iloss: 0.535	
+[2022-10-10 02:17:23] STEP 125000	TRAIN	loss: 0.760	tloss: 0.000	ploss: 0.199	nloss: 0.254	iloss: 0.308	
+[2022-10-10 02:28:34] STEP 130000	TRAIN	loss: 0.755	tloss: 0.000	ploss: 0.197	nloss: 0.253	iloss: 0.305	
+[2022-10-10 02:29:26] STEP 130000	VAL  	loss: 1.350	tloss: 0.000	ploss: 0.350	nloss: 0.450	iloss: 0.550	
+[2022-10-10 02:40:43] STEP 135000	TRAIN	loss: 0.752	tloss: 0.000	ploss: 0.197	nloss: 0.253	iloss: 0.302	
+[2022-10-10 02:51:55] STEP 140000	TRAIN	loss: 0.750	tloss: 0.000	ploss: 0.197	nloss: 0.251	iloss: 0.301	
+[2022-10-10 02:52:48] STEP 140000	VAL  	loss: 1.329	tloss: 0.000	ploss: 0.384	nloss: 0.410	iloss: 0.535	
+[2022-10-10 03:04:03] STEP 145000	TRAIN	loss: 0.746	tloss: 0.000	ploss: 0.195	nloss: 0.251	iloss: 0.301	
+[2022-10-10 03:15:14] STEP 150000	TRAIN	loss: 0.740	tloss: 0.000	ploss: 0.194	nloss: 0.250	iloss: 0.297	
+[2022-10-10 03:16:07] STEP 150000	VAL  	loss: 1.304	tloss: 0.000	ploss: 0.384	nloss: 0.400	iloss: 0.520	
+[2022-10-10 03:27:28] STEP 155000	TRAIN	loss: 0.736	tloss: 0.000	ploss: 0.194	nloss: 0.248	iloss: 0.294	
+[2022-10-10 03:38:45] STEP 160000	TRAIN	loss: 0.731	tloss: 0.000	ploss: 0.192	nloss: 0.247	iloss: 0.291	
+[2022-10-10 03:39:36] STEP 160000	VAL  	loss: 1.348	tloss: 0.000	ploss: 0.425	nloss: 0.392	iloss: 0.531	
+[2022-10-10 03:50:55] STEP 165000	TRAIN	loss: 0.730	tloss: 0.000	ploss: 0.192	nloss: 0.247	iloss: 0.290	
+[2022-10-10 04:02:10] STEP 170000	TRAIN	loss: 0.725	tloss: 0.000	ploss: 0.190	nloss: 0.247	iloss: 0.288	
+[2022-10-10 04:03:04] STEP 170000	VAL  	loss: 1.319	tloss: 0.000	ploss: 0.340	nloss: 0.447	iloss: 0.532	
+[2022-10-10 04:14:23] STEP 175000	TRAIN	loss: 0.724	tloss: 0.000	ploss: 0.190	nloss: 0.246	iloss: 0.288	
+[2022-10-10 04:25:40] STEP 180000	TRAIN	loss: 0.720	tloss: 0.000	ploss: 0.189	nloss: 0.246	iloss: 0.285	
+[2022-10-10 04:26:35] STEP 180000	VAL  	loss: 1.339	tloss: 0.000	ploss: 0.386	nloss: 0.416	iloss: 0.537	
+[2022-10-10 04:37:54] STEP 185000	TRAIN	loss: 0.715	tloss: 0.000	ploss: 0.188	nloss: 0.245	iloss: 0.283	
+[2022-10-10 04:49:10] STEP 190000	TRAIN	loss: 0.713	tloss: 0.000	ploss: 0.188	nloss: 0.244	iloss: 0.281	
+[2022-10-10 04:50:04] STEP 190000	VAL  	loss: 1.325	tloss: 0.000	ploss: 0.377	nloss: 0.413	iloss: 0.535	
+[2022-10-10 05:01:24] STEP 195000	TRAIN	loss: 0.709	tloss: 0.000	ploss: 0.186	nloss: 0.244	iloss: 0.279	
+[2022-10-10 05:12:39] STEP 200000	TRAIN	loss: 0.706	tloss: 0.000	ploss: 0.186	nloss: 0.243	iloss: 0.278	
+[2022-10-10 05:13:31] STEP 200000	VAL  	loss: 1.317	tloss: 0.000	ploss: 0.341	nloss: 0.444	iloss: 0.533	
+[2022-10-10 05:24:47] STEP 205000	TRAIN	loss: 0.702	tloss: 0.000	ploss: 0.185	nloss: 0.242	iloss: 0.276	
+[2022-10-10 05:36:05] STEP 210000	TRAIN	loss: 0.701	tloss: 0.000	ploss: 0.185	nloss: 0.242	iloss: 0.275	
+[2022-10-10 05:36:54] STEP 210000	VAL  	loss: 1.318	tloss: 0.000	ploss: 0.332	nloss: 0.455	iloss: 0.531	
+[2022-10-10 05:48:13] STEP 215000	TRAIN	loss: 0.697	tloss: 0.000	ploss: 0.184	nloss: 0.240	iloss: 0.272	
+[2022-10-10 05:59:30] STEP 220000	TRAIN	loss: 0.698	tloss: 0.000	ploss: 0.184	nloss: 0.241	iloss: 0.273	
+[2022-10-10 06:00:23] STEP 220000	VAL  	loss: 1.322	tloss: 0.000	ploss: 0.405	nloss: 0.381	iloss: 0.536	
+[2022-10-10 06:11:41] STEP 225000	TRAIN	loss: 0.697	tloss: 0.000	ploss: 0.184	nloss: 0.241	iloss: 0.272	
+[2022-10-10 06:22:54] STEP 230000	TRAIN	loss: 0.695	tloss: 0.000	ploss: 0.183	nloss: 0.241	iloss: 0.271	
+[2022-10-10 06:23:49] STEP 230000	VAL  	loss: 1.331	tloss: 0.000	ploss: 0.372	nloss: 0.417	iloss: 0.542	
+[2022-10-10 06:35:05] STEP 235000	TRAIN	loss: 0.690	tloss: 0.000	ploss: 0.181	nloss: 0.239	iloss: 0.269	
+[2022-10-10 06:46:23] STEP 240000	TRAIN	loss: 0.690	tloss: 0.000	ploss: 0.182	nloss: 0.239	iloss: 0.269	
+[2022-10-10 06:47:17] STEP 240000	VAL  	loss: 1.330	tloss: 0.000	ploss: 0.378	nloss: 0.419	iloss: 0.534	
+[2022-10-10 06:58:32] STEP 245000	TRAIN	loss: 0.687	tloss: 0.000	ploss: 0.181	nloss: 0.239	iloss: 0.267	
+[2022-10-10 07:09:49] STEP 250000	TRAIN	loss: 0.686	tloss: 0.000	ploss: 0.181	nloss: 0.239	iloss: 0.266	
+[2022-10-10 07:10:42] STEP 250000	VAL  	loss: 1.335	tloss: 0.000	ploss: 0.431	nloss: 0.380	iloss: 0.524	
+[2022-10-10 07:22:02] STEP 255000	TRAIN	loss: 0.681	tloss: 0.000	ploss: 0.180	nloss: 0.238	iloss: 0.262	
+[2022-10-10 07:33:19] STEP 260000	TRAIN	loss: 0.678	tloss: 0.000	ploss: 0.179	nloss: 0.237	iloss: 0.262	
+[2022-10-10 07:34:12] STEP 260000	VAL  	loss: 1.324	tloss: 0.000	ploss: 0.333	nloss: 0.463	iloss: 0.528	
+[2022-10-10 07:45:24] STEP 265000	TRAIN	loss: 0.683	tloss: 0.000	ploss: 0.181	nloss: 0.237	iloss: 0.264	
+[2022-10-10 07:56:36] STEP 270000	TRAIN	loss: 0.676	tloss: 0.000	ploss: 0.179	nloss: 0.237	iloss: 0.261	
+[2022-10-10 07:57:34] STEP 270000	VAL  	loss: 1.323	tloss: 0.000	ploss: 0.384	nloss: 0.408	iloss: 0.531	
+[2022-10-10 08:08:54] STEP 275000	TRAIN	loss: 0.678	tloss: 0.000	ploss: 0.180	nloss: 0.237	iloss: 0.262	
+[2022-10-10 08:20:09] STEP 280000	TRAIN	loss: 0.671	tloss: 0.000	ploss: 0.177	nloss: 0.236	iloss: 0.258	
+[2022-10-10 08:20:59] STEP 280000	VAL  	loss: 1.342	tloss: 0.000	ploss: 0.368	nloss: 0.439	iloss: 0.535	
+[2022-10-10 08:32:13] STEP 285000	TRAIN	loss: 0.670	tloss: 0.000	ploss: 0.177	nloss: 0.235	iloss: 0.258	
+[2022-10-10 08:43:33] STEP 290000	TRAIN	loss: 0.670	tloss: 0.000	ploss: 0.177	nloss: 0.235	iloss: 0.258	
+[2022-10-10 08:44:24] STEP 290000	VAL  	loss: 1.338	tloss: 0.000	ploss: 0.384	nloss: 0.412	iloss: 0.542	
+[2022-10-10 08:55:41] STEP 295000	TRAIN	loss: 0.668	tloss: 0.000	ploss: 0.177	nloss: 0.235	iloss: 0.257	
+[2022-10-10 09:06:57] STEP 300000	TRAIN	loss: 0.668	tloss: 0.000	ploss: 0.177	nloss: 0.234	iloss: 0.258	
+[2022-10-10 09:07:49] STEP 300000	VAL  	loss: 1.336	tloss: 0.000	ploss: 0.384	nloss: 0.418	iloss: 0.533	
+[2022-10-10 09:19:06] STEP 305000	TRAIN	loss: 0.666	tloss: 0.000	ploss: 0.176	nloss: 0.234	iloss: 0.256	
+[2022-10-10 09:30:22] STEP 310000	TRAIN	loss: 0.664	tloss: 0.000	ploss: 0.176	nloss: 0.234	iloss: 0.255	
+[2022-10-10 09:31:15] STEP 310000	VAL  	loss: 1.347	tloss: 0.000	ploss: 0.312	nloss: 0.508	iloss: 0.526	
+[2022-10-10 09:42:33] STEP 315000	TRAIN	loss: 0.664	tloss: 0.000	ploss: 0.176	nloss: 0.234	iloss: 0.254	
+[2022-10-10 09:53:46] STEP 320000	TRAIN	loss: 0.660	tloss: 0.000	ploss: 0.175	nloss: 0.233	iloss: 0.251	
+[2022-10-10 09:54:39] STEP 320000	VAL  	loss: 1.345	tloss: 0.000	ploss: 0.448	nloss: 0.367	iloss: 0.531	
+[2022-10-10 10:05:58] STEP 325000	TRAIN	loss: 0.655	tloss: 0.000	ploss: 0.173	nloss: 0.232	iloss: 0.250	
+[2022-10-10 10:17:11] STEP 330000	TRAIN	loss: 0.658	tloss: 0.000	ploss: 0.175	nloss: 0.233	iloss: 0.250	
+[2022-10-10 10:18:05] STEP 330000	VAL  	loss: 1.336	tloss: 0.000	ploss: 0.415	nloss: 0.385	iloss: 0.536	
+[2022-10-10 10:29:21] STEP 335000	TRAIN	loss: 0.656	tloss: 0.000	ploss: 0.173	nloss: 0.232	iloss: 0.251	
+[2022-10-10 10:40:33] STEP 340000	TRAIN	loss: 0.655	tloss: 0.000	ploss: 0.175	nloss: 0.232	iloss: 0.248	
+[2022-10-10 10:41:23] STEP 340000	VAL  	loss: 1.349	tloss: 0.000	ploss: 0.392	nloss: 0.419	iloss: 0.538	
+[2022-10-10 10:52:44] STEP 345000	TRAIN	loss: 0.653	tloss: 0.000	ploss: 0.172	nloss: 0.232	iloss: 0.249	
+[2022-10-10 11:03:58] STEP 350000	TRAIN	loss: 0.653	tloss: 0.000	ploss: 0.173	nloss: 0.231	iloss: 0.249	
+[2022-10-10 11:04:52] STEP 350000	VAL  	loss: 1.323	tloss: 0.000	ploss: 0.354	nloss: 0.447	iloss: 0.523	
+[2022-10-10 11:16:17] STEP 355000	TRAIN	loss: 0.649	tloss: 0.000	ploss: 0.172	nloss: 0.231	iloss: 0.246	
+[2022-10-10 11:27:33] STEP 360000	TRAIN	loss: 0.648	tloss: 0.000	ploss: 0.172	nloss: 0.231	iloss: 0.245	
+[2022-10-10 11:28:25] STEP 360000	VAL  	loss: 1.364	tloss: 0.000	ploss: 0.410	nloss: 0.410	iloss: 0.545	
+[2022-10-10 11:39:46] STEP 365000	TRAIN	loss: 0.651	tloss: 0.000	ploss: 0.173	nloss: 0.231	iloss: 0.247	
+[2022-10-10 11:50:57] STEP 370000	TRAIN	loss: 0.646	tloss: 0.000	ploss: 0.172	nloss: 0.231	iloss: 0.244	
+[2022-10-10 11:51:47] STEP 370000	VAL  	loss: 1.353	tloss: 0.000	ploss: 0.420	nloss: 0.395	iloss: 0.538	
+[2022-10-10 12:03:01] STEP 375000	TRAIN	loss: 0.645	tloss: 0.000	ploss: 0.170	nloss: 0.230	iloss: 0.244	
+[2022-10-10 12:14:12] STEP 380000	TRAIN	loss: 0.644	tloss: 0.000	ploss: 0.171	nloss: 0.230	iloss: 0.243	
+[2022-10-10 12:15:04] STEP 380000	VAL  	loss: 1.341	tloss: 0.000	ploss: 0.370	nloss: 0.442	iloss: 0.530	
+[2022-10-10 12:26:26] STEP 385000	TRAIN	loss: 0.643	tloss: 0.000	ploss: 0.170	nloss: 0.230	iloss: 0.244	
+[2022-10-10 12:37:38] STEP 390000	TRAIN	loss: 0.643	tloss: 0.000	ploss: 0.171	nloss: 0.230	iloss: 0.242	
+[2022-10-10 12:38:30] STEP 390000	VAL  	loss: 1.361	tloss: 0.000	ploss: 0.414	nloss: 0.410	iloss: 0.537	
+[2022-10-10 12:49:50] STEP 395000	TRAIN	loss: 0.642	tloss: 0.000	ploss: 0.171	nloss: 0.229	iloss: 0.242	
+[2022-10-10 13:01:05] STEP 400000	TRAIN	loss: 0.639	tloss: 0.000	ploss: 0.169	nloss: 0.229	iloss: 0.241	
+[2022-10-10 13:01:59] STEP 400000	VAL  	loss: 1.349	tloss: 0.000	ploss: 0.388	nloss: 0.433	iloss: 0.528	
+[2022-10-10 13:13:17] STEP 405000	TRAIN	loss: 0.640	tloss: 0.000	ploss: 0.170	nloss: 0.229	iloss: 0.241	
+[2022-10-10 13:24:34] STEP 410000	TRAIN	loss: 0.638	tloss: 0.000	ploss: 0.169	nloss: 0.228	iloss: 0.241	
+[2022-10-10 13:25:25] STEP 410000	VAL  	loss: 1.353	tloss: 0.000	ploss: 0.444	nloss: 0.383	iloss: 0.525	
+[2022-10-10 13:36:46] STEP 415000	TRAIN	loss: 0.639	tloss: 0.000	ploss: 0.170	nloss: 0.229	iloss: 0.240	
+[2022-10-10 13:48:06] STEP 420000	TRAIN	loss: 0.633	tloss: 0.000	ploss: 0.167	nloss: 0.227	iloss: 0.239	
+[2022-10-10 13:48:58] STEP 420000	VAL  	loss: 1.370	tloss: 0.000	ploss: 0.453	nloss: 0.369	iloss: 0.548	
+[2022-10-10 14:00:15] STEP 425000	TRAIN	loss: 0.647	tloss: 0.000	ploss: 0.169	nloss: 0.228	iloss: 0.250	
+[2022-10-10 14:11:30] STEP 430000	TRAIN	loss: 0.632	tloss: 0.000	ploss: 0.167	nloss: 0.228	iloss: 0.237	
+[2022-10-10 14:12:22] STEP 430000	VAL  	loss: 1.350	tloss: 0.000	ploss: 0.349	nloss: 0.467	iloss: 0.533	
+[2022-10-10 14:23:41] STEP 435000	TRAIN	loss: 0.634	tloss: 0.000	ploss: 0.168	nloss: 0.228	iloss: 0.238	
+[2022-10-10 14:35:02] STEP 440000	TRAIN	loss: 0.631	tloss: 0.000	ploss: 0.168	nloss: 0.227	iloss: 0.236	
+[2022-10-10 14:35:55] STEP 440000	VAL  	loss: 1.348	tloss: 0.000	ploss: 0.443	nloss: 0.377	iloss: 0.528	
+[2022-10-10 14:47:10] STEP 445000	TRAIN	loss: 0.629	tloss: 0.000	ploss: 0.167	nloss: 0.227	iloss: 0.235	
+[2022-10-10 14:58:26] STEP 450000	TRAIN	loss: 0.627	tloss: 0.000	ploss: 0.166	nloss: 0.226	iloss: 0.235	
+[2022-10-10 14:59:18] STEP 450000	VAL  	loss: 1.344	tloss: 0.000	ploss: 0.399	nloss: 0.418	iloss: 0.527	
+[2022-10-10 15:10:30] STEP 455000	TRAIN	loss: 0.627	tloss: 0.000	ploss: 0.166	nloss: 0.226	iloss: 0.234	
+[2022-10-10 15:21:45] STEP 460000	TRAIN	loss: 0.627	tloss: 0.000	ploss: 0.166	nloss: 0.226	iloss: 0.234	
+[2022-10-10 15:22:35] STEP 460000	VAL  	loss: 1.355	tloss: 0.000	ploss: 0.312	nloss: 0.505	iloss: 0.538	
+[2022-10-10 15:33:49] STEP 465000	TRAIN	loss: 0.626	tloss: 0.000	ploss: 0.167	nloss: 0.226	iloss: 0.234	
+[2022-10-10 15:45:02] STEP 470000	TRAIN	loss: 0.626	tloss: 0.000	ploss: 0.167	nloss: 0.225	iloss: 0.234	
+[2022-10-10 15:45:53] STEP 470000	VAL  	loss: 1.341	tloss: 0.000	ploss: 0.387	nloss: 0.422	iloss: 0.532	
+[2022-10-10 15:57:07] STEP 475000	TRAIN	loss: 0.628	tloss: 0.000	ploss: 0.166	nloss: 0.225	iloss: 0.237	
+[2022-10-10 16:08:24] STEP 480000	TRAIN	loss: 0.626	tloss: 0.000	ploss: 0.165	nloss: 0.225	iloss: 0.236	
+[2022-10-10 16:09:13] STEP 480000	VAL  	loss: 1.363	tloss: 0.000	ploss: 0.409	nloss: 0.419	iloss: 0.535	
+[2022-10-10 16:20:28] STEP 485000	TRAIN	loss: 0.623	tloss: 0.000	ploss: 0.165	nloss: 0.225	iloss: 0.233	
+[2022-10-10 16:31:45] STEP 490000	TRAIN	loss: 0.624	tloss: 0.000	ploss: 0.166	nloss: 0.225	iloss: 0.232	
+[2022-10-10 16:32:36] STEP 490000	VAL  	loss: 1.352	tloss: 0.000	ploss: 0.371	nloss: 0.431	iloss: 0.550	
+[2022-10-10 16:43:51] STEP 495000	TRAIN	loss: 0.624	tloss: 0.000	ploss: 0.166	nloss: 0.225	iloss: 0.233	
+[2022-10-10 16:55:11] STEP 500000	TRAIN	loss: 0.620	tloss: 0.000	ploss: 0.164	nloss: 0.224	iloss: 0.232	
+[2022-10-10 16:56:00] STEP 500000	VAL  	loss: 1.331	tloss: 0.000	ploss: 0.344	nloss: 0.458	iloss: 0.529	

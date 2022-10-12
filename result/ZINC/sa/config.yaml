@@ -1,0 +1,62 @@
+property:
+- sa
+model_config:
+  GraphEncodingModel_Mol:
+    node_hidden_size: 128
+    hidden_size: 128
+    n_layer: 4
+    dropout: 0.0
+  Readout_Mol:
+    input_size: 128
+    hidden_size: 128
+    output_size: 128
+    dropout: 0.0
+  GraphEncodingModel_Frag:
+    node_hidden_size: 128
+    hidden_size: 128
+    n_layer: 4
+    dropout: 0.0
+  Readout_Frag:
+    input_size: 128
+    hidden_size: 128
+    output_size: 128
+    dropout: 0.0
+  TerminationCheckModel:
+    input_size: 128
+    hidden_size: 128
+    dropout: 0.0
+  FragmentSelectionModel:
+    input_size1: 128
+    input_size2: 128
+    hidden_size: 128
+    dropout: 0.0
+  GraphEncodingModel_Pair:
+    node_input_size: 128
+    node_hidden_size: 128
+    hidden_size: 128
+    n_layer: 4
+    dropout: 0.0
+  IndexSelectionModel:
+    hidden_size: 128
+    dropout: 0.0
+trainer_config:
+  gpus: 1
+  num_workers: 4
+  lr: 0.001
+  train_batch_size: 128
+  val_batch_size: 256
+  num_negative_samples: 10
+  alpha: 0.75
+  max_step: 500000
+  log_interval: 5000
+  val_interval: 10000
+  save_interval: 10000
+data_config:
+  data_dir: ./data/ZINC
+  property_path: ./data/ZINC/property.db
+  library_path: ./data/ZINC/library.csv
+  train_data_path: ./data/ZINC/train.csv
+  train_weight_path: ./data/ZINC/train_weight.npy
+  val_data_path: ./data/ZINC/val.csv
+  train_max_atoms: 40
+  val_max_atoms: 40
