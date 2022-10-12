@@ -18,6 +18,10 @@ else
 
     echo ">>> get_datapoint.py (validation data) start (get validation datapoints)"
     python preprocessing/get_datapoint.py $1 --cpus $2 --mol val_smiles.csv --output val.csv
-    echo ">>> get_datapoint.py (train data) finish"
+    echo ">>> get_datapoint.py (validation data) finish"
+
+    #echo ">>> get_datapoint.py (test data) start (get test datapoints)"
+    #python preprocessing/get_datapoint.py $1 --cpus $2 --mol val_smiles.csv --output val.csv
+    #echo ">>> get_datapoint.py (test data) finish"
 
 fi
