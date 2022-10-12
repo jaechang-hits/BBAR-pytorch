@@ -16,33 +16,53 @@ dst_train_data_path = './train.csv'
 dst_weight_file_path = './train_weight.npy'
 dst_val_data_path = './val.csv'
 dst_library_path = './library.csv'
-dst_library_unuse_path = './library_unuse.csv'
+dst_library_unseen_path = './library_unseen.csv'
+dst_library_unseen_hydrophilic_path = './library_unseen_hydrophilic.csv'
+dst_library_unseen_hydrophobic_path = './library_unseen_hydrophobic.csv'
 dst_property_path = './property.db'
 
 os.symlink(src_property_path, dst_property_path)
 
+# Create Library
 with open(src_library_path) as f :
     lines = [l.strip().split(',') for l in f.readlines()[1:]]
 lines = [(int(a),b,int(c)) for a, b, c in lines]
 random.shuffle(lines)
 cutoff = int(len(lines) * 2/3)
-use_lines = lines[:cutoff]
-unuse_lines = lines[cutoff:]
-
-use_lines.sort()
-unuse_lines.sort()
+seen_lines = lines[:cutoff]
+unseen_lines = lines[cutoff:]
+seen_lines.sort()
+unseen_lines.sort()
 
 with open(dst_library_path, 'w') as w :
     w.write('FID,SMILES,frequency\n')
-    for i,(a,b,c) in enumerate(use_lines) :
-        w.write(f'{i},{b},{c}\n')
+    for new_fragid,(old_fragid, smiles, freq) in enumerate(seen_lines) :
+        w.write(f'{new_fragid},{smiles},{freq}\n')
 
-with open(dst_library_unuse_path, 'w') as w :
+with open(dst_library_unseen_path, 'w') as w :
     w.write('FID,SMILES\n')
-    for i,(a,b,c) in enumerate(unuse_lines) :
-        w.write(f'{i},{b}\n')
+    for new_fragid,(old_fragid, smiles, freq) in enumerate(unseen_lines) :
+        w.write(f'{new_fragid},{smiles}\n')
 
-dic = {a:i for i, (a,_,_) in enumerate(use_lines)}
+from rdkit import Chem
+from rdkit.Chem.Descriptors import TPSA
+unseen_data_w_tpsa = [(TPSA(Chem.MolFromSmiles(smiles)), smiles) for _, smiles, _ in unseen_lines]
+unseen_data_w_tpsa.sort()
+
+with open(dst_library_unseen_hydrophobic_path, 'w') as w :
+    w.write('FID,SMILES,TPSA\n')
+    for new_fragid in range(2000) :
+        tpsa, smiles = unseen_data_w_tpsa[new_fragid]
+        w.write(f'{new_fragid},{smiles},{tpsa}\n')
+
+with open(dst_library_unseen_hydrophilic_path, 'w') as w :
+    w.write('FID,SMILES,TPSA\n')
+    for new_fragid in range(2000) :
+        tpsa, smiles = unseen_data_w_tpsa[-(new_fragid+1)]
+        w.write(f'{new_fragid},{smiles},{tpsa}\n')
+
+## Update Train/Val DataPoint
+dic = {a:i for i, (a,_,_) in enumerate(seen_lines)}
 
 with open(dst_train_data_path, 'w') as w :
     w.write('SMILES,FID,Idx,MolID\n')
