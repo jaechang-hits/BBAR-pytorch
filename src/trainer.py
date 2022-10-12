@@ -44,7 +44,7 @@ class Trainer() :
 
     def setup_properties(self, property_path, properties) :
         self.properties = properties
-        if len(properties) > 0 :
+        if properties is not None and len(properties) > 0 :
             self.cond_module = Cond_Module(property_path, properties)
             self.cond_scale = self.cond_module.scale
         else :

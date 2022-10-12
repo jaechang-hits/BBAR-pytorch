@@ -24,12 +24,13 @@ class MoleculeBuilder() :
         else :
             self.filter_fn = lambda x : True
 
+        library_builtin_model_path = self.cfg.get('library_builtin_model_path', None)
         # Load Model & Library
-        if os.path.exists(self.cfg.library_embeded_model_path) :
-            self.model, self.library = self.load_library_embeded_model(cfg.library_embeded_model_path)
+        if library_builtin_model_path is not None and os.path.exists(library_builtin_model_path) :
+            self.model, self.library = self.load_library_builtin_model(library_builtin_model_path)
         else :
             self.model, self.library = self.load_model(cfg.model_path), self.load_library(cfg.library_path)
-            self.embed_model_with_library(cfg.library_embeded_model_path)
+            self.embed_model_with_library(library_builtin_model_path)
 
         # Setup Library Information
         library_freq = torch.from_numpy(self.library.freq)
@@ -177,8 +178,6 @@ class MoleculeBuilder() :
         for fragment_idx in fragment_idxs :
             scaffold = self.library.get_mol(fragment_idx)
             scaffold = brics.preprocess.remove_brics_label(scaffold, returnMol = True)
-            #if Descriptors.ExactMolWt(scaffold) > 490 :
-            #    continue
             if self.cfg.idx_masking :
                 valid = (len(brics.BRICSCompose.get_possible_brics_labels(scaffold)) > 0)
             else :
@@ -216,9 +215,9 @@ class MoleculeBuilder() :
     def load_library(self, library_path) :
         return brics.BRICSLibrary(library_path, save_mol = True)
 
-    def load_library_embeded_model(self, library_embeded_model_path) :
-        print(f"Load {library_embeded_model_path}")
-        checkpoint = torch.load(library_embeded_model_path, map_location = 'cpu')
+    def load_library_builtin_model(self, library_builtin_model_path) :
+        print(f"Load {library_builtin_model_path}")
+        checkpoint = torch.load(library_builtin_model_path, map_location = 'cpu')
         model = BlockConnectionPredictor(checkpoint['config'], checkpoint['cond_scale'])
         model.load_state_dict(checkpoint['model_state_dict'])
         model.set_Z_lib(checkpoint['Z_lib'])
@@ -227,15 +226,15 @@ class MoleculeBuilder() :
         library = brics.BRICSLibrary(smiles_list = checkpoint['library_smiles'], freq_list = checkpoint['library_freq'], save_mol = True)
         return model, library
 
-    def embed_model_with_library(self, library_embeded_model_path) :
+    def embed_model_with_library(self, library_builtin_model_path) :
         print("Setup Library Fragments' Graph Vectors")
         with torch.no_grad() :
             h, adj = self.load_library_feature()
             Z_lib = self.model.graph_embedding_frag(h, adj)
             self.model.Z_lib = Z_lib
         print("Finish")
-        if self.cfg.library_embeded_model_path is not None :
-            print(f"Create Local File ({library_embeded_model_path})")
+        if library_builtin_model_path is not None :
+            print(f"Create Local File ({library_builtin_model_path})")
             torch.save({
                 'model_state_dict': self.model.state_dict(),
                 'config': self.model._cfg,
@@ -243,9 +242,9 @@ class MoleculeBuilder() :
                 'library_smiles': self.library.smiles,
                 'library_freq': self.library.freq,
                 'Z_lib': Z_lib
-            }, self.cfg.library_embeded_model_path)
+            }, self.library_builtin_model_path)
         else :
-            print("You can save graph vectors by setting generator_config.library_embeded_model_path")
+            print("You can save graph vectors by setting generator_config.library_builtin_model_path")
 
         
     def load_library_feature(self) :
