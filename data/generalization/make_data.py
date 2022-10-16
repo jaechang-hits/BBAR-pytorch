@@ -36,16 +36,18 @@ unseen_lines.sort()
 
 with open(dst_library_path, 'w') as w :
     w.write('FID,SMILES,frequency\n')
-    for new_fragid,(old_fragid, smiles, freq) in enumerate(seen_lines) :
+    for new_fragid,(_, smiles, freq) in enumerate(seen_lines) :
         w.write(f'{new_fragid},{smiles},{freq}\n')
 
 with open(dst_library_unseen_path, 'w') as w :
     w.write('FID,SMILES\n')
-    for new_fragid,(old_fragid, smiles, freq) in enumerate(unseen_lines) :
+    for new_fragid,(_, smiles, freq) in enumerate(unseen_lines) :
         w.write(f'{new_fragid},{smiles}\n')
+
 
 from rdkit import Chem
 from rdkit.Chem.Descriptors import TPSA
+unseen_lines = [tup for tup in unseen_lines if tup[-1] > 5]
 unseen_data_w_tpsa = [(TPSA(Chem.MolFromSmiles(smiles)), smiles) for _, smiles, _ in unseen_lines]
 unseen_data_w_tpsa.sort()
 
@@ -62,7 +64,10 @@ with open(dst_library_unseen_hydrophilic_path, 'w') as w :
         w.write(f'{new_fragid},{smiles},{tpsa}\n')
 
 ## Update Train/Val DataPoint
+dic = {old_fragid: new_fragid for new_fragid, (old_fragid, _, _) in enumerate(unseen_lines)}
 dic = {a:i for i, (a,_,_) in enumerate(seen_lines)}
+# Terminate Case
+dic[-1] = -1
 
 with open(dst_train_data_path, 'w') as w :
     w.write('SMILES,FID,Idx,MolID\n')
