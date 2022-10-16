@@ -10,6 +10,7 @@ from rdkit.Chem import Mol, Descriptors
 from typing import Dict, Union, Any, List, Optional, Callable
 
 from .model import BlockConnectionPredictor
+from utils.SA_Score.sascorer import calculateScore
 from .utils import brics, feature
 
 RDLogger.DisableLog('rdApp.*')
@@ -58,7 +59,7 @@ class MoleculeBuilder() :
 
         step = 0
         if scaffold is None :
-            fragment_idx, scaffold = self.get_random_scaffold(max_try = 10)
+            fragment_idx, scaffold = self.get_random_scaffold(max_try = 30)
             if verbose :
                 if scaffold is not None :
                     scaffold_smiles = Chem.MolToSmiles(scaffold)
@@ -71,16 +72,19 @@ class MoleculeBuilder() :
         else :
             if isinstance(scaffold, str) :
                 scaffold = Chem.MolFromSmiles(scaffold)
-            if verbose :
-                scaffold_smiles = Chem.MolToSmiles(scaffold)
-                if self.cfg.idx_masking :
-                    valid = (len(brics.BRICSCompose.get_possible_labels(scaffold)) > 0)
-                else :
-                    valid = True
-                if valid :
+            if self.cfg.idx_masking :
+                valid = (len(brics.BRICSCompose.get_possible_brics_labels(scaffold)) > 0)
+            else :
+                valid = True
+            if valid :
+                if verbose :
+                    scaffold_smiles = Chem.MolToSmiles(scaffold)
                     print(f"Start\t'{scaffold_smiles}'")
-                else :
+            else :
+                if verbose :
+                    scaffold_smiles = Chem.MolToSmiles(scaffold)
                     print(f"Invalid Scaffold: '{scaffold_smiles}'")
+                return None
 
         mol = scaffold
         while step < self.max_iteration :
@@ -94,7 +98,6 @@ class MoleculeBuilder() :
             if termination :
                 self.print_log(verbose, 'FINISH', step, mol)
                 return mol
-
             # Predict Fragment
             use_lib = self.get_fragment_sample(mol)        # (N_lib)
             if use_lib is not None :
@@ -103,43 +106,55 @@ class MoleculeBuilder() :
                     return None
                 else :
                     use_lib = use_lib.unsqueeze(0)
-
             prob_dist_fragment = self.model.predict_frag_id(Z_mol, probs=True, use_lib=use_lib).squeeze(0)
                                                                                                     # (N_lib)
-            valid = not (torch.isnan(prob_dist_fragment.sum()))
-            if not valid :
-                self.print_log(verbose, 'FAIL', step, mol, log = 'NO_APPROPRIATE_FRAGMENT')
-                return None
-            idx = Categorical(probs = prob_dist_fragment).sample().item()
-            if use_lib is None :
-                fragment_idx = idx
-            else :
-                fragment_idx = use_lib[0, idx].item()
-            fragment = self.library.get_mol(fragment_idx)
-            
-            # Predict Index
-            Z_frag = self.model.Z_lib[fragment_idx].unsqueeze(0)
-            prob_dist_idx = self.model.predict_idx(h, adj, _h, Z_mol, Z_frag, probs=True).squeeze(0)
-            # Masking
-            if self.cfg.idx_masking :
-                prob_dist_idx.masked_fill_(self.get_idx_mask(mol, fragment), 0)
+            compose_success = False
+            for _ in range(100) :
+                valid = not (torch.isnan(prob_dist_fragment.sum()))
+                if not valid :
+                    self.print_log(verbose, 'FAIL', step, mol, log = 'NO_APPROPRIATE_FRAGMENT')
+                    return None
+
+                idx = Categorical(probs = prob_dist_fragment).sample().item()
+                if use_lib is None :
+                    fragment_idx = idx
+                else :
+                    fragment_idx = use_lib[0, idx].item()
+                fragment = self.library.get_mol(fragment_idx)
+                
+                # Predict Index
+                Z_frag = self.model.Z_lib[fragment_idx].unsqueeze(0)
+                prob_dist_idx = self.model.predict_idx(h, adj, _h, Z_mol, Z_frag, probs=True).squeeze(0)
+                # Masking
+                if self.cfg.idx_masking :
+                    prob_dist_idx.masked_fill_(self.get_idx_mask(mol, fragment), 0)
+
                 valid = (torch.sum(prob_dist_idx).item() > 0)
                 if not valid :
+                    prob_dist_fragment[idx] = 0
                     continue
-            atom_idx = Categorical(probs = prob_dist_idx).sample().item()
 
-            # compose fragments
-            try :
-                composed_mol = brics.BRICSCompose.compose(mol, fragment, atom_idx, 0, 
-                                                    returnMol=True, force=self.cfg.compose_force)
-                assert composed_mol is not None
-            except Exception as e:
+                # Choose Index
+                atom_idx = Categorical(probs = prob_dist_idx).sample().item()
+
+                # compose fragments
+                try :
+                    composed_mol = brics.BRICSCompose.compose(mol, fragment, atom_idx, 0, 
+                                                        returnMol=True, force=self.cfg.compose_force)
+                    assert composed_mol is not None
+                    compose_success = True
+                    break
+                except Exception as e:
+                    continue
+
+            if compose_success : 
+                mol = composed_mol
+                self.print_log(verbose, 'ADD', step, mol, fragment=fragment, fragment_idx=fragment_idx, atom_idx=atom_idx)
+                step += 1
+            else :
                 self.print_log(verbose, 'FAIL', step, mol, log = 'FAIL_TO_CONNECT_FRAGMENT\n'+str(e))
                 return None
-        
-            mol = composed_mol
-            self.print_log(verbose, 'ADD', step, mol, fragment=fragment, fragment_idx=fragment_idx, atom_idx=atom_idx)
-            step += 1
+
         # Max Iteration Error
         return None
 
@@ -173,11 +188,14 @@ class MoleculeBuilder() :
                 library_mask[i, allow_brics_label] = True
         self.library_mask = library_mask.T  # (self.library, 17)
     
-    def get_random_scaffold(self, max_try = 10) :
-        fragment_idxs = torch.multinomial(self.library_freq, max_try).tolist()
+    def get_random_scaffold(self, max_try = 20) :
+        fragment_idxs = torch.multinomial(self.library_freq_weighted, max_try).tolist()
         for fragment_idx in fragment_idxs :
             scaffold = self.library.get_mol(fragment_idx)
             scaffold = brics.preprocess.remove_brics_label(scaffold, returnMol = True)
+            #if not calculateScore(scaffold) < 2.0 :
+            if not (Descriptors.ExactMolWt(scaffold) <= 200 and Descriptors.TPSA(scaffold) <= 40) : 
+                continue
             if self.cfg.idx_masking :
                 valid = (len(brics.BRICSCompose.get_possible_brics_labels(scaffold)) > 0)
             else :
@@ -242,7 +260,7 @@ class MoleculeBuilder() :
                 'library_smiles': self.library.smiles,
                 'library_freq': self.library.freq,
                 'Z_lib': Z_lib
-            }, self.library_builtin_model_path)
+            }, library_builtin_model_path)
         else :
             print("You can save graph vectors by setting generator_config.library_builtin_model_path")
 

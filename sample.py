@@ -29,6 +29,19 @@ def setup_generator() :
 
     return generator, args
 
+def run_generator(generator, scaffold_mol, seed, returnMol = False, verbose = True) -> str :
+    common.set_seed(seed)
+    try :
+        generated_mol = generator.generate(scaffold_mol, verbose)
+        if not returnMol :
+            generated_mol = Chem.MolToSmiles(generated_mol)
+        assert generated_mol is not None
+    except KeyboardInterrupt :
+        raise KeyboardInterrupt
+    except :
+        return None
+    return generated_mol
+
 def main() : 
     # Set Generator
     generator, args = setup_generator()
@@ -59,7 +72,6 @@ def main() :
     global_success = 0
     for scaf_idx, scaffold_smi in enumerate(scaffold_list) :
         # Encoding Scaffold Molecule
-        common.set_seed(args.seed)
         if scaffold_smi is not None :
             scaffold_mol = Chem.MolFromSmiles(scaffold_smi)
             print(f"[{scaf_idx+1}/{len(scaffold_list)}]")
@@ -70,33 +82,21 @@ def main() :
 
         local_st = time.time()
         success = 0
-        for i in range(1, args.num_samples + 1) :
-            seed = args.seed + i - 1
+        for i in range(args.num_samples) :
+            seed = args.seed + i
             if not args.q :
-                print(f"{i}th Generation... (Seed {seed})")
-            common.set_seed(seed)
-            generated_mol = generator.generate(scaffold_mol, args.verbose)
-            try :
-                pass
-            except KeyboardInterrupt :
-                raise KeyboardInterrupt
-            except :
-                generated_mol = None
+                print(f"{i+1}th Generation... (Seed {seed})")
+            generated_smiles = run_generator(generator, scaffold_mol, seed, verbose = args.verbose)
 
-            if generated_mol is None :
+            if generated_smiles is None :
                 if not args.q :
                     print("FAIL\n")
-                continue
+                out_writer.write('\n')
             else :
-                smiles = Chem.MolToSmiles(generated_mol)
-                if smiles is not None :
-                    success += 1
-                    out_writer.write(smiles+'\n')
-                    if not args.q :
-                        print(f"Finish\t{smiles}\n")
-                else :
-                    if not args.q :
-                        print("FAIL\n")
+                if not args.q :
+                    print(f"Finish\t{generated_smiles}\n")
+                out_writer.write(generated_smiles+'\n')
+                success += 1
 
         local_end = time.time() 
         time_cost = local_end - local_st 
