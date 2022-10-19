@@ -1,6 +1,8 @@
-# Fragment-based Molecular Generative Model
+# BBAR: Building Block based molecular AugoRegressive model
 
-Official github of *Improvement of generating molecules with rare targetproperty values using a molecular fragment-based deepgenerative model without restriction in chemical space* by Seonghwan Seo, Jaechang Lim, Woo Youn Kim.
+Official github of *Molecular generative model via retrosynthetically prepared chemical building block assembly* by Seonghwan Seo, Jaechang Lim, Woo Youn Kim.
+
+You can access updated version in https://github.com/SeonghwanSeo/BBAR.git.
 
 ## Table of Contents
 
@@ -9,16 +11,16 @@ Official github of *Improvement of generating molecules with rare targetproperty
   - [Data Structure](#data-structure)
   - [Preprocessing](#preprocessing)
 - [Model Training](#model-training)
-- [Generating](#generate)
-- Research
+- [Generation](#generation)
 
 ## Environment
 
-- python>=3.7
-- [Pandas](https://pandas.pydata.org/)=1.2.2
-- [Hydra](https://hydra.cc/)=1.0.6
-- [PyTorch]((https://pytorch.org/))=1.7.1
-- [RDKit](https://www.rdkit.org/docs/Install.html)>=2020.09.3
+- python=3.9
+- [Pandas](https://pandas.pydata.org/)=1.5.0
+- [PyTorch]((https://pytorch.org/))=1.12
+- [RDKit](https://www.rdkit.org/docs/Install.html)=2022.3.5
+- [PyTDC](https://tdcommons.ai) (Optional)
+- Parmap=1.6.0
 
 ## Data
 
@@ -32,16 +34,27 @@ Move to `data/` directory. Initially, the structure of directory `data/` is as f
 ├── data/
     ├── data_preprocess.sh
     ├── preprocessing/
-    ├── start_list/
-    ├── molport/
-    │   └── property.db
-    └── docking/
-        └── property.db
+    ├── start_scaffold/
+    ├── ZINC/
+    │   ├── smiles/
+    │   ├── all.txt 		(source data)
+    │   ├── get_metadata.py
+    │   ├── library.csv
+    │   ├── library_map.csv
+    │   ├── train.txt 	(https://github.com/wengong-jin/icml18-jtnn/tree/master/data/zinc/train.txt)
+    │   ├── valid.txt 	(https://github.com/wengong-jin/icml18-jtnn/tree/master/data/zinc/valid.txt)
+    │   └── test.txt 		(https://github.com/wengong-jin/icml18-jtnn/tree/master/data/zinc/test.txt)
+    ├── generalization/
+    └── 7l13_docking/ 	(Smina calculation result. (ligands: ZINC, receptor: 7L13))
+        ├── smiles/
+        ├── library.csv	(Same to ZINC/library.csv)
+        ├── library_map.csv
+        └── property.db	(metadata)
 ```
 
 - `data_preprocess.sh`, `preprocessing/`: Scripts for preprocessing of data. Unless you must change default setting, you can use the given shell script, `data_preprocess.sh`.
-- `start_list/` is for our molecular sampling.
-- `molport/`, `docking/`: Dataset which is used in our research.
+- `start_scaffold/` is for our molecular sampling.
+- `ZINC/`, `7l13_docking/`, `generalization/`: Dataset which is used in our research.
 
 #### Prepare your own dataset
 
@@ -55,42 +68,71 @@ id2,C1CCCC1,35.1,251.2,...
 ```
 
 - SMILES must be RDKit-readable.
-- If you want to train a single molecule set with different properties, you don't have to configure datasets separately for each property. You need to configure just one dataset file which contains all of property information. For example, `molport/property.db` contains information about `ExactMolWt`, `MolLogP`, `TPSA` and we can train the model with a property pair `[ExactMolWt, MolLogP]`.
+- If you want to train a single molecule set with different properties, you don't have to configure datasets separately for each property. You need to configure just one dataset file which contains all of property information. For example, `molport/property.db` contains information about `MolWt`, `LogP`, `TPSA` and you can train the model with a property pair `[MolWt, MolLogP]`.
 
 After constructing your own dataset to the given format, make directory in `data/` and put your dataset with the name `property.db`.
 
 ### Preprocessing
+#### Preprocessing (ZINC)
 
-First default setting is splitting SMILES set by train:validation:test = 0.75:0.15:0.10. If you do not wish this setting, please follow the steps below. If you want to use your own dataset, put your data directory name instead of `molport/`.
+First, you need to create metadata. Go to `data/ZINC` and run `python get_metadata.py`. For 7L13 docking dataset, I already uploaded a metadata in github.
 
 ```shell
-cd data/
-python preprocessing/get_library.py molport/ --cpus <cpus>
-python preprocessing/split_data.py molport/ --train_ratio <train-ratio> --val_ratio <val_ratio>
-python preprocessing/get_datapoint.py molport/ --cpus <cpus> --mol train_smiles.csv --output train.csv
-python preprocessing/get_frag1_freq.py molport/
-python preprocessing/get_datapoint.py molport/ --cpus <cpus> --mol val_smiles.csv --output val.csv
-python preprocessing/get_datapoint.py molport/ --cpus <cpus> --mol test_smiles.csv --output test.csv
+cd data/ZINC
+python get_metadata.py
+# property.db (metadata) is created from all.txt
 ```
 
-Else, you just run the script `data_preprocess.sh`.
+And then, just run the script `data_preprocess.sh`
 
 ```shell
-./data_preprocess.sh molport/ <cpus>
+cd ../
+./data_preprocess.sh ./ZINC/ <cpus>
+# Create train.csv, val.csv, test.csv from ./ZINC/smiles/ and ./ZINC/library.csv
+
+# For 7l13_docking
+./data_preprocess.sh ./7l13_docking/ <cpus>
+# Create train.csv, val.csv, test.csv from ./7l13_docking/smiles/ and ./7l13_docking/library.csv
 ```
 
 After preprocessing step, the structure of directory `data/` is as follows. Our training/sampling code is based on following directory structure, so renaming the file is not recommended.
 
 ```bash
 ├── data/
-    ├── molport/
-    │   ├── library.csv
-    │   ├── library_map.csv
+    ├── ZINC/
+    │   ├── ...
     │   ├── property.db
+    │   ├── train.csv
+    │   ├── train_weight.npy
+    │   ├── val.csv
+    │   └── test.csv
+    ├── ...
+```
+
+#### Preprocessing (Own Data)
+
+If you want to use your own data, follow below procedure. You need to put `property.db` in `data/<NEW-DIR>`.
+
+There are two script: for partitioning dataset and creating library.
+
+ There is a script for splitting dataset. (source file is `property.db`).
+
+```shell
+python preprocessing/split_data.py <NEW-DIR> --train_ratio <train-ratio> --val_ratio <val_ratio>
+python preprocessing/get_library.py <NEW-DIR> --cpus <cpus>
+./data_preprocess.sh <NEW-DIR> <cpus>
+```
+
+```
+├── data/
+    ├── <NEW-DIR>/
+    │   ├── property.db (Source File)
     │   ├── smiles
     │   │   ├── train_smiles.csv
     │   │   ├── val_smiles.csv
     │   │   └── test_smiles.csv
+    │   ├── library.csv
+    │   ├── library_map.csv
     │   ├── train.csv
     │   ├── train_weight.npy
     │   ├── val.csv
@@ -102,80 +144,133 @@ After preprocessing step, the structure of directory `data/` is as follows. Our 
 
 ## Model Training
 
-Move to the root directory. Our script handles arguments and hyperparameters with Hydra module. The following commands are the minimum command for implementing our paper, and you can handle more arguments and hyperparameters with [hydra override](https://hydra.cc/docs/intro#basic-example).
+```shell
+python train.py -h
+```
 
-You can handle model hyperparameter with hydra module. The default setting is the hyperparameter used in our research.
+Move to the root directory. Our training script reads config files in `./config/`, you can handle them by modifying or creating config files.
 
-Training Script Format Example (See `conf/train.yaml`)
+Training Script Format Example
 
 ```shell
 python train.py \
-    name=<exp-name> \
-    exp_dir=<exp-dir> \
-    timezone=<timezone> \
-    data_dir=<data-dir-name> \
-    condition.descriptors='[PropertyList]' \
-    train.num_workers=<num-workers> \
-    train.max_epoch=<max_epochs> \
-    ns_trainer.n_sample=<num-negative-sample> \
-    ns_trainer.alpha=<alpha> \
-    data.train.batch_size=<batch_size> \
-    data.train.sampler.n_sample=<num_train_data> \
-    data.train.max_atoms=<max_atoms> \
-    data.val.batch_size=<batch_size> \
-    data.val.max_atoms=<max_atoms>
+    name <exp-name> \
+    exp_dir <exp-dir> \
+    property <property1> <property2> ... \
+    trainer_config <train-config-path> \
+    model_config <model-config-path> \
+    data_config <data-config-path>
 ```
 
 - `name`, `exp_dir`: The model output is saved at `<exp-dir>/<name>/`. Default setting of `exp_dir` is `result/`
-- `timezine`: Argument just for logging. Enter your timezone. Default value is None.(System Time)
-- `data_dir`: Since the directory structure is fixed, you just need to use the data directory. If you change the data directory structure, you should add argument for each file according to the config file `conf/train.yaml`. Default value is `data/molport/`
-- `condition.descriptors`: For control the target properties.
-  - condition.descriptors='[]'          # Default, Unconditional
-  - condition.descriptors='[MolLogP]'
-  - condition.descriptors='[MolLogP,TPSA]'
-- `ns_trainer.n_sample`: Number of negative samples. Default value is 10.
-- `ns_trainer.alpha`: Power value of fragment frequency distribution. Default value is 0.75, which is commonly used in Word2Vec. *Mikolov, T. et al, (2013)*
-- `data.train.sampler.n_sample`: The training step uses a balanced sampler. This parameter is according to `num_samples` of  `torch.utils.data.WeightedRandomSampler`. Default value is 4,000,000.
-- `data.train.max_atoms`, `data.val.max_atoms`: For simple implementation, our model requires the maximum number of atoms. Enter the maximum number of atoms of molecules in the dataset. Default value is 50.
+- `property`: List of interesting properties
+- `trainer_config`: Config file for training. Default setting is `./config/trainer.yaml`
+- `model_config`: Config file for model. Default setting is `./config/model.yaml`
+- `data_config`: Config file for data. There are some settings we used in `./config/data/`
 
 Example running script.
 
 ```shell
 python train.py \
-    name='logp-tpsa' \
-    exp_dir='result/molport' \
-    data_dir='data/molport' \
-    condition.descriptors='[MolLogP,TPSA]' \
-    train.num_workers=4 \
-    train.max_epoch=10 \
-    data.train.batch_size=128 \
-    data.train.sampler.n_sample=4000000 \
-    data.train.max_atoms=50 \
-    data.val.batch_size=256 \
-    data.val.max_atoms=50
+    name 'logp-tpsa' \
+    exp_dir 'result/ZINC' \
+    property logp tpsa \
+    data_config './config/data/zinc.yaml'
+```
+
+Yaml File Example
+
+- data_config (`./config/data/zinc.yaml`)
+
+```yaml
+data_dir: ./data/ZINC
+property_path: ${data_dir}/property.db
+library_path: ${data_dir}/library.csv
+train_data_path: ${data_dir}/train.csv
+train_weight_path: ${data_dir}/train_weight.npy
+val_data_path: ${data_dir}/val.csv
+train_max_atoms: 40
+val_max_atoms: 40
+```
+
+- trainer_config
+
+```yaml
+# Training Environment
+gpus: 1
+num_workers: 4
+
+# Hyperparameter for Model Training
+lr: 0.001
+train_batch_size: 128
+val_batch_size: 256
+
+# Hyperparameter for Negative Sampling
+num_negative_samples: 10
+alpha: 0.75
+
+# unit: step (batch)
+max_step: 500000
+log_interval: 5000
+val_interval: 10000
+save_interval: 10000
 ```
 
 
-## Generating
+
+## Generation
 
 ```shell
-python sample.py --help
+python sample.py -h
 ```
 
 Example running script.
 
 ```shell
+# Non scaffold-based generation.
 python sample.py \
-    gpus=1 \
-    name='logp\=4-tpsa\=60' \
-    exp_dir='result/sample/molport/logp-tpsa' \
-    data_dir='data/molport' \
-    model_path='result/model/molport/logp-tpsa/save9.tar' \
-    start_mol_path='data/start_list/start100.smi' \
-    n_sample=100 \
-    save_property=true \
-    +condition.MolLogP=4 \
-    +condition.TPSA=60
+    --generator_config './config/generator/logp_tpsa.yaml' \
+    --o './result_sample/logp\=4-tpsa\=60.smi' \
+    --num_samples 100 \
+    --logp 4 --tpsa 60 	# generator config specific parameters. (No help message (python sample.py -h))
+
+# Scaffold-based generation. (Single Scaffold)
+python sample.py \
+    --generator_config './config/generator/no_condition.yaml' \
+    --scaffold 'Cc1ccccc1'
+    --o './result_sample/no_condition.smi' \
+    --num_samples 100
+    
+# Scaffold-based generation. (Multi Scaffold)
+python sample.py \
+    --generator_config './config/generator/logp.yaml' \
+    --scaffold './data/start_scaffold/start100.smi' \
+    --o './result_sample/logp\=6.smi' \
+    --num_samples 100 \
+    --logp 6
+```
+
+Yaml File Example
+
+- generator config (`./config/generator/logp_tpsa.yaml`)
+```yaml
+model_path: './result/ZINC/logp-tpsa/checkpoint/best.tar'
+library_path: './data/ZINC/library.csv'
+
+# Below is library built-in model file path. (Model Parameter + SMILES and Latent Vectors for fragments in library.)
+# During generation, model vectorizes the fragments in library.
+# You can skip this process by saving all of them: model parameter and library informations.
+# I called it `library built-in model`
+# If below is not `null`, generator save or load library built-in model.
+# If the built-in model file exists, upper two parameters (`model_path`, `library_path`) are not needed.
+library_builtin_model_path: './builtin_model/zinc_logp-tpsa' # (optional)
+
+# Required
+n_library_sample: 2000
+alpha: 0.75
+max_iteration: 10
+idx_masking: True
+compose_force: False
 ```
 
 
