@@ -1,4 +1,4 @@
-# BBAR: Building Block based molecular AugoRegressive model
+# BBAR: Building Block based molecular AutoRegressive model
 
 Official github of *Molecular generative model via retrosynthetically prepared chemical building block assembly* by Seonghwan Seo, Jaechang Lim, Woo Youn Kim.
 
