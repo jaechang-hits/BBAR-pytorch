@@ -1,6 +1,5 @@
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
-import parmap
 
 def canonicalize_smiles(smiles) :
     mol = Chem.MolFromSmiles(smiles)
@@ -53,5 +52,5 @@ def property(smiles_list, fn, input_type: str = 'smiles', progress_bar: bool = T
         _fn = lambda x:fn(Chem.MolFromSmiles(x))
     else :
         _fn = fn
-    properties = parmap.map(_fn, smiles_list, pm_pbar = progress_bar, pm_processes=0)
+    properties = list(map(_fn, smiles_list))
     return properties

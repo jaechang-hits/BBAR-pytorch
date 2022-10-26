@@ -22,7 +22,7 @@ def penalized_logp(smi, normalize = False):
         return -100.0
 
     log_p = Descriptors.MolLogP(mol)
-    SA = SA_Oracle(smi)
+    SA = -SA_Oracle(smi)
 
     # cycle score
     cycle_list = nx.cycle_basis(nx.Graph(Chem.rdmolops.GetAdjacencyMatrix(mol)))
@@ -35,6 +35,7 @@ def penalized_logp(smi, normalize = False):
     else:
         cycle_length = cycle_length - 6
     cycle_score = -cycle_length
+
     if normalize :
         logP_mean = 2.4570953396190123
         logP_std = 1.434324401111988
@@ -47,7 +48,7 @@ def penalized_logp(smi, normalize = False):
         normalized_cycle = (cycle_score - cycle_mean) / cycle_std
         return normalized_log_p + normalized_SA + normalized_cycle
     else :
-        return log_p + SA - cycle_score
+        return log_p + SA + cycle_score
 
 smiles_desc_list = {
     'sa': Oracle(name = 'SA'),
