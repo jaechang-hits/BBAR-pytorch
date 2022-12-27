@@ -2,7 +2,7 @@
 
 Official github of *Molecular generative model via retrosynthetically prepared chemical building block assembly* by Seonghwan Seo, Jaechang Lim, Woo Youn Kim.
 
-You will be able to access updated version in https://github.com/SeonghwanSeo/BBAR.git.
+There is improved version (BBARv2) in https://github.com/SeonghwanSeo/BBAR.git.
 
 ## Table of Contents
 
